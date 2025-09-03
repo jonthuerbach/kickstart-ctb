@@ -4,9 +4,10 @@ local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 -- ProfileStore/Modules
-local ProfileStore = require(ReplicatedStorage.Shared.Data.ProfileStore)
+local ProfileStore = require(ReplicatedStorage.Shared.Libraries.ProfileStore)
 local Template = require(ReplicatedStorage.Shared.Data.DataTemplate)
 local DataManager = require(ReplicatedStorage.Shared.Data.DataManager)
+local GamePassManager = require(ReplicatedStorage.Shared.Data.GamePassManager)
 
 local function GetStoreName()
 	return RunService:IsStudio() and "Test" or "Live"
@@ -30,6 +31,8 @@ local function Initialize(player: Player, profile: typeof(PlayerStore:StartSessi
 
 	-- Update the UI
 	--ReplicatedStorage.Remotes.UpdateGold:FireClient(player, profile.Data.Gold)
+
+	GamePassManager.UpdateOwnershipData(player)
 end
 
 local function PlayerAdded(player: Player)

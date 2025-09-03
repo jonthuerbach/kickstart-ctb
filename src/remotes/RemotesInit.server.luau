@@ -20,3 +20,10 @@ if not updateGems then
 	updateGems.Name = "UpdateGems"
 	updateGems.Parent = remotes
 end
+
+local requestGamePass = remotes:FindFirstChild("RequestGamePass")
+if not requestGamePass then
+	requestGamePass = Instance.new("RemoteEvent")
+	requestGamePass.Name = "RequestGamePass"
+	requestGamePass.Parent = remotes
+end
