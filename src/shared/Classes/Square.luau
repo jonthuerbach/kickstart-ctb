@@ -15,12 +15,19 @@ function Square.New(cf: CFrame)
 		hits = {},
 	}, Square)
 
+	local squares = Workspace:FindFirstChild("Squares")
+	if not squares then
+		squares = Instance.new("Folder")
+		squares.Name = "Squares"
+		squares.Parent = Workspace
+	end
+
 	local part = Instance.new("Part")
 	part.Anchored = true
 	part.CFrame = cf
 	part.Size = Vector3.new(8, 1, 8)
 	part.BrickColor = BrickColor.new("White")
-	part.Parent = workspace
+	part.Parent = squares
 	part.Touched:Connect(function(hit: BasePart)
 		self:partTouched(hit)
 	end)
