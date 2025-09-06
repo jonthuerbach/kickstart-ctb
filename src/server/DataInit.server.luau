@@ -21,13 +21,13 @@ local function Initialize(player: Player, profile: typeof(PlayerStore:StartSessi
 	local leaderstats = Instance.new("Folder", player)
 	leaderstats.Name = "leaderstats"
 
-	local Gold = Instance.new("NumberValue", leaderstats)
-	Gold.Name = "Gold"
-	Gold.Value = profile.Data.Gold
+	local Squares = Instance.new("NumberValue", leaderstats)
+	Squares.Name = "Squares"
+	Squares.Value = profile.Data.Squares
 
-	local Gems = Instance.new("NumberValue", leaderstats)
-	Gems.Name = "Gems"
-	Gems.Value = profile.Data.Gems
+	local Wins = Instance.new("NumberValue", leaderstats)
+	Wins.Name = "Wins"
+	Wins.Value = profile.Data.Wins
 
 	-- Update the UI
 	--ReplicatedStorage.Remotes.UpdateGold:FireClient(player, profile.Data.Gold)
