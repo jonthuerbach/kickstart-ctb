@@ -9,4 +9,27 @@ GameConfig.Teams = {
 	{ name = "Red", color = BrickColor.new("Bright red") },
 }
 
+GameConfig.PhaseConfig = {
+	INTERMISSION = {
+		id = "INTERMISSION",
+		duration = 20,
+		label = "Intermission",
+	},
+	TEAM_SELECTION = {
+		id = "TEAM_SELECTION",
+		duration = 10,
+		label = "Team Selection",
+	},
+	COUNTDOWN = {
+		id = "COUNTDOWN",
+		duration = 3,
+		label = "Get Ready!",
+	},
+	ROUND_START = {
+		id = "ROUND_START",
+		duration = 20,
+		label = "Round Start",
+	},
+}
+
 return GameConfig

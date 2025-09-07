@@ -1,33 +1,57 @@
+local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local UpdateTimer = Remotes:WaitForChild("UpdateTimer")
+
 local Game = require(ReplicatedStorage.Shared.Classes.Game)
+local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
 local currentGame = Game.Start()
 
-local function countdown(seconds, phaseName)
-	-- stateValue.Value = phaseName
-	if phaseName == "COOLDOWN" then
+local function countdown(seconds: number, phaseId: string, phaseLabel: string)
+	-- stateValue.Value = phaseId
+	if phaseId == "INTERMISSION" then
 		currentGame:ResetAll()
-		print("Cooldown round started")
-	elseif phaseName == "CLICK" then
-		-- wallDescription.Text = "Start clicking!"
+		print("Intermission round started")
+	elseif phaseId == "TEAM_SELECTION" then
+		for _, p in ipairs(Players:GetPlayers()) do
+			if p.Character then
+				print(p.Name)
+			end
+		end
 		print("Click round started")
-	elseif phaseName == "COUNTDOWN" then
+	elseif phaseId == "COUNTDOWN" then
 		-- wallDescription.Text = "Get ready..."
 		print("Countdown round started")
-	elseif phaseName == "RACE" then
-		-- wallDescription.Text = "Go!"
+	elseif phaseId == "START" then
+		-- wallDescription.Text = "Go!"a
 		print("Race round started")
 	end
 	for t = seconds, 0, -1 do
-		-- timerValue.Value = t
-		-- wallCountdown.Text = tostring(t)
+		UpdateTimer:FireAllClients(t, phaseLabel)
 		task.wait(1)
 	end
 end
 
 while true do
-	countdown(20, "COOLDOWN")
-	countdown(10, "CLICK")
-	countdown(3, "COUNTDOWN")
-	countdown(10, "RACE")
+	countdown(
+		GameConfig.PhaseConfig.INTERMISSION.duration,
+		GameConfig.PhaseConfig.INTERMISSION.id,
+		GameConfig.PhaseConfig.INTERMISSION.label
+	)
+	countdown(
+		GameConfig.PhaseConfig.TEAM_SELECTION.duration,
+		GameConfig.PhaseConfig.TEAM_SELECTION.id,
+		GameConfig.PhaseConfig.TEAM_SELECTION.label
+	)
+	countdown(
+		GameConfig.PhaseConfig.COUNTDOWN.duration,
+		GameConfig.PhaseConfig.COUNTDOWN.id,
+		GameConfig.PhaseConfig.COUNTDOWN.label
+	)
+	countdown(
+		GameConfig.PhaseConfig.ROUND_START.duration,
+		GameConfig.PhaseConfig.ROUND_START.id,
+		GameConfig.PhaseConfig.ROUND_START.label
+	)
 end

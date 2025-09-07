@@ -8,6 +8,7 @@ local ProfileStore = require(ReplicatedStorage.Shared.Libraries.ProfileStore)
 local Template = require(ReplicatedStorage.Shared.Data.DataTemplate)
 local DataManager = require(ReplicatedStorage.Shared.Data.DataManager)
 local GamePassManager = require(ReplicatedStorage.Shared.Data.GamePassManager)
+local Game = require(ReplicatedStorage.Shared.Classes.Game)
 
 local function GetStoreName()
 	return RunService:IsStudio() and "Test" or "Live"
@@ -60,6 +61,12 @@ local function PlayerAdded(player: Player)
 	else
 		player:Kick("Data error has occurred. Please rejoin.")
 	end
+	player.CharacterAdded:Connect(function(character)
+		local g = Game.GetCurrent()
+		if g then
+			g:PlaceInZone(character)
+		end
+	end)
 end
 
 -- Early Joiners
