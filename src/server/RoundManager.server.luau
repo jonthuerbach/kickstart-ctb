@@ -7,8 +7,9 @@ local UpdateTimer = Remotes:WaitForChild("UpdateTimer")
 
 local Game = require(ReplicatedStorage.Shared.Classes.Game)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
-local currentGame = Game.Start()
+local DataManager = require(ReplicatedStorage.Shared.Data.DataManager)
 
+local currentGame = Game.Start()
 local StartingFloor = workspace:WaitForChild("StartingFloor")
 
 local function ensureTeams()
@@ -25,7 +26,6 @@ local function ensureTeams()
 end
 
 local function showStartingFloor(isShowing: boolean)
-	print("showStartingFloor", isShowing)
 	if isShowing then
 		StartingFloor.Transparency = 0.5
 		StartingFloor.CanCollide = true
@@ -91,6 +91,20 @@ local function placeAllInZone()
 	end
 end
 
+function awardWins()
+	local blue = currentGame.Scores.Blue or 0
+	local red = currentGame.Scores.Red or 0
+	if blue == red then
+		return
+	end
+	local winningTeam = (blue > red) and GameConfig.Teams[1].name or GameConfig.Teams[2].name
+	for _, player in Players:GetPlayers() do
+		if player.Team and player.Team.Name == winningTeam then
+			DataManager.AddWins(player, 1)
+		end
+	end
+end
+
 local function countdown(seconds: number, phaseId: string, phaseLabel: string)
 	-- stateValue.Value = phaseId
 	if phaseId == "INTERMISSION" then
@@ -104,12 +118,13 @@ local function countdown(seconds: number, phaseId: string, phaseLabel: string)
 		assignTeams()
 		print("Team selection round started")
 	elseif phaseId == "COUNTDOWN" then
-		-- wallDescription.Text = "Get ready..."
 		print("Countdown started")
 	elseif phaseId == "ROUND_START" then
 		showStartingFloor(false)
-		-- wallDescription.Text = "Go!"a
 		print("Start the round!")
+	elseif phaseId == "DETERMINE_WINNER" then
+		awardWins()
+		print("Determine winner!")
 	end
 	for t = seconds, 0, -1 do
 		UpdateTimer:FireAllClients(t, phaseLabel)
@@ -137,5 +152,10 @@ while true do
 		GameConfig.PhaseConfig.ROUND_START.duration,
 		GameConfig.PhaseConfig.ROUND_START.id,
 		GameConfig.PhaseConfig.ROUND_START.label
+	)
+	countdown(
+		GameConfig.PhaseConfig.DETERMINE_WINNER.duration,
+		GameConfig.PhaseConfig.DETERMINE_WINNER.id,
+		GameConfig.PhaseConfig.DETERMINE_WINNER.label
 	)
 end

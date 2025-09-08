@@ -4,9 +4,6 @@ local Workspace = game:GetService("Workspace")
 
 local DataManager = require(ReplicatedStorage.Shared.Data.DataManager)
 
-local Remotes = ReplicatedStorage:WaitForChild("Remotes")
-local UpdateScores = Remotes:WaitForChild("UpdateScores")
-
 local Square = {}
 Square.__index = Square
 

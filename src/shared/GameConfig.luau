@@ -30,6 +30,11 @@ GameConfig.PhaseConfig = {
 		duration = 20,
 		label = "Round Start",
 	},
+	DETERMINE_WINNER = {
+		id = "DETERMINE_WINNER",
+		duration = 5,
+		label = "Determine Winner",
+	},
 }
 
 return GameConfig
