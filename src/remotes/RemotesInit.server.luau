@@ -34,3 +34,10 @@ if not isShowingScores then
 	isShowingScores.Name = "IsShowingScores"
 	isShowingScores.Parent = remotes
 end
+
+local isShowingPhase = remotes:FindFirstChild("IsShowingPhase")
+if not isShowingPhase then
+	isShowingPhase = Instance.new("RemoteEvent")
+	isShowingPhase.Name = "IsShowingPhase"
+	isShowingPhase.Parent = remotes
+end
