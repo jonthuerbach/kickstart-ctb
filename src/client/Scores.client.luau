@@ -14,6 +14,7 @@ local redTeamText = redTeamFrame:WaitForChild("RedTextLabel")
 
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local UpdateScores = remotes:WaitForChild("UpdateScores")
+local IsShowingScores = remotes:WaitForChild("IsShowingScores")
 
 UpdateScores.OnClientEvent:Connect(function(scores: { [string]: number })
 	for team, score in scores do
@@ -23,4 +24,9 @@ UpdateScores.OnClientEvent:Connect(function(scores: { [string]: number })
 			redTeamText.Text = tostring(score)
 		end
 	end
+end)
+
+IsShowingScores.OnClientEvent:Connect(function(isShowing: boolean)
+	blueTeamFrame.Visible = isShowing
+	redTeamFrame.Visible = isShowing
 end)

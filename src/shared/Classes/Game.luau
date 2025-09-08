@@ -13,7 +13,7 @@ local rng = Random.new()
 local current: Game?
 
 type Square = Square.Square
-export type Game = typeof(setmetatable({} :: { Squares: { [number]: Square } }, Game))
+export type Game = typeof(setmetatable({} :: { Squares: { [number]: Square }, ScoringEnabled: boolean }, Game))
 
 function generateSquareGrid(onTouch: (Square, Player) -> ()): { [number]: Square }
 	local squares = {}
@@ -60,6 +60,7 @@ function Game.New()
 			Blue = 0,
 			Red = 0,
 		},
+		ScoringEnabled = false,
 	}, Game)
 
 	self.Squares = generateSquareGrid(function(square, player)
@@ -110,6 +111,10 @@ function Game.ResetScores(self: Game): ()
 end
 
 function Game.OnSquareTouched(self: Game, square, player: Player): ()
+	if not self.ScoringEnabled then
+		return
+	end
+
 	local team = player.Team
 	if not team then
 		return
@@ -138,6 +143,10 @@ function Game.OnSquareTouched(self: Game, square, player: Player): ()
 	square.part.Material = Enum.Material.Neon
 
 	UpdateScores:FireAllClients(self.Scores)
+end
+
+function Game.SetScoringEnabled(self: Game, enabled: boolean): ()
+	self.ScoringEnabled = enabled
 end
 
 return Game

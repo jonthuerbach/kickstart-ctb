@@ -4,6 +4,7 @@ local Teams = game:GetService("Teams")
 
 local Remotes = ReplicatedStorage:WaitForChild("Remotes")
 local UpdateTimer = Remotes:WaitForChild("UpdateTimer")
+local IsShowingScores = Remotes:WaitForChild("IsShowingScores")
 
 local Game = require(ReplicatedStorage.Shared.Classes.Game)
 local GameConfig = require(ReplicatedStorage.Shared.GameConfig)
@@ -113,18 +114,21 @@ local function countdown(seconds: number, phaseId: string, phaseLabel: string)
 		clearTeams()
 		currentGame:ResetScores()
 		currentGame:ResetAll()
+		currentGame:SetScoringEnabled(false)
+		IsShowingScores:FireAllClients(false)
 		print("Intermission round started")
 	elseif phaseId == "TEAM_SELECTION" then
 		assignTeams()
-		print("Team selection round started")
+		currentGame:SetScoringEnabled(false)
 	elseif phaseId == "COUNTDOWN" then
-		print("Countdown started")
+		currentGame:SetScoringEnabled(false)
 	elseif phaseId == "ROUND_START" then
 		showStartingFloor(false)
-		print("Start the round!")
+		IsShowingScores:FireAllClients(true)
+		currentGame:SetScoringEnabled(true)
 	elseif phaseId == "DETERMINE_WINNER" then
 		awardWins()
-		print("Determine winner!")
+		currentGame:SetScoringEnabled(false)
 	end
 	for t = seconds, 0, -1 do
 		UpdateTimer:FireAllClients(t, phaseLabel)

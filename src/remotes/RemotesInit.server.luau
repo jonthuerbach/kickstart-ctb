@@ -27,3 +27,10 @@ if not updateScores then
 	updateScores.Name = "UpdateScores"
 	updateScores.Parent = remotes
 end
+
+local isShowingScores = remotes:FindFirstChild("IsShowingScores")
+if not isShowingScores then
+	isShowingScores = Instance.new("RemoteEvent")
+	isShowingScores.Name = "IsShowingScores"
+	isShowingScores.Parent = remotes
+end

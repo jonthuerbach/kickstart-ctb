@@ -52,10 +52,10 @@ function Square.partTouched(self: Square, hit: BasePart): ()
 		self.onTouch(self, player)
 	end
 
-	if player.Team then
-		self.part.BrickColor = player.Team.TeamColor
-		self.part.Material = Enum.Material.Neon
-	end
+	-- if player.Team then
+	-- 	self.part.BrickColor = player.Team.TeamColor
+	-- 	self.part.Material = Enum.Material.Neon
+	-- end
 
 	DataManager.UpdateSquares(player, 1)
 end
