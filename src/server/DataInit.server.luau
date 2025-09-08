@@ -12,6 +12,7 @@ local GamePassManager = require(ReplicatedStorage.Shared.Data.GamePassManager)
 local Game = require(ReplicatedStorage.Shared.Classes.Game)
 
 StarterPlayer.CharacterWalkSpeed = 32
+StarterPlayer.CharacterJumpHeight = 0
 
 local function GetStoreName()
 	return RunService:IsStudio() and "Test" or "Live"
@@ -72,10 +73,14 @@ local function PlayerAdded(player: Player)
 
 		local humanoid = character:WaitForChild("Humanoid") :: Humanoid
 		humanoid.WalkSpeed = 32
+		humanoid.JumpHeight = 0
 
 		humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
 			if humanoid.WalkSpeed ~= 32 then
 				humanoid.WalkSpeed = 32
+			end
+			if humanoid.JumpHeight ~= 0 then
+				humanoid.JumpHeight = 0
 			end
 		end)
 	end)
