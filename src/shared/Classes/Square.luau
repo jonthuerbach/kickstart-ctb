@@ -4,15 +4,19 @@ local Workspace = game:GetService("Workspace")
 
 local DataManager = require(ReplicatedStorage.Shared.Data.DataManager)
 
+local Remotes = ReplicatedStorage:WaitForChild("Remotes")
+local UpdateScores = Remotes:WaitForChild("UpdateScores")
+
 local Square = {}
 Square.__index = Square
 
 export type Square = typeof(setmetatable({} :: { cf: CFrame, hits: { [Player]: boolean }, part: BasePart }, Square))
 
-function Square.New(cf: CFrame)
+function Square.New(cf: CFrame, onTouch: (Square, Player) -> ())
 	local self = setmetatable({
 		cf = cf,
 		hits = {},
+		onTouch = onTouch,
 	}, Square)
 
 	local squares = Workspace:FindFirstChild("Squares")
@@ -47,9 +51,15 @@ function Square.partTouched(self: Square, hit: BasePart): ()
 	end
 	self.hits[player] = true
 
-	-- self.part.BrickColor = player.Team.TeamColor
-	self.part.BrickColor = BrickColor.new("Bright blue")
-	self.part.Material = Enum.Material.Neon
+	if self.onTouch then
+		self.onTouch(self, player)
+	end
+
+	if player.Team then
+		self.part.BrickColor = player.Team.TeamColor
+		self.part.Material = Enum.Material.Neon
+	end
+
 	DataManager.UpdateSquares(player, 1)
 end
 

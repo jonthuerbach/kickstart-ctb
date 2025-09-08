@@ -2,6 +2,7 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local StarterPlayer = game:GetService("StarterPlayer")
 
 -- ProfileStore/Modules
 local ProfileStore = require(ReplicatedStorage.Shared.Libraries.ProfileStore)
@@ -9,6 +10,8 @@ local Template = require(ReplicatedStorage.Shared.Data.DataTemplate)
 local DataManager = require(ReplicatedStorage.Shared.Data.DataManager)
 local GamePassManager = require(ReplicatedStorage.Shared.Data.GamePassManager)
 local Game = require(ReplicatedStorage.Shared.Classes.Game)
+
+StarterPlayer.CharacterWalkSpeed = 32
 
 local function GetStoreName()
 	return RunService:IsStudio() and "Test" or "Live"
@@ -66,6 +69,15 @@ local function PlayerAdded(player: Player)
 		if g then
 			g:PlaceInZone(character)
 		end
+
+		local humanoid = character:WaitForChild("Humanoid") :: Humanoid
+		humanoid.WalkSpeed = 32
+
+		humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
+			if humanoid.WalkSpeed ~= 32 then
+				humanoid.WalkSpeed = 32
+			end
+		end)
 	end)
 end
 

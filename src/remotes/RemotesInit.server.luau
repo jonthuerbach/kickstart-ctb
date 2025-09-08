@@ -20,3 +20,10 @@ if not updateTimer then
 	updateTimer.Name = "UpdateTimer"
 	updateTimer.Parent = remotes
 end
+
+local updateScores = remotes:FindFirstChild("UpdateScores")
+if not updateScores then
+	updateScores = Instance.new("RemoteEvent")
+	updateScores.Name = "UpdateScores"
+	updateScores.Parent = remotes
+end

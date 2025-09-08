@@ -1,6 +1,6 @@
 local GameConfig = {}
 
-GameConfig.GridSize = 32
+GameConfig.GridSize = 48
 
 GameConfig.SquareSize = Vector3.new(8, 1, 8)
 
@@ -12,7 +12,7 @@ GameConfig.Teams = {
 GameConfig.PhaseConfig = {
 	INTERMISSION = {
 		id = "INTERMISSION",
-		duration = 20,
+		duration = 30,
 		label = "Intermission",
 	},
 	TEAM_SELECTION = {
