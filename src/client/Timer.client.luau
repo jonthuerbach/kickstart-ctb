@@ -13,7 +13,13 @@ local phaseText = phaseFrame:WaitForChild("PhaseTextLabel")
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local UpdateTimer = remotes:WaitForChild("UpdateTimer")
 
+function formatTime(t: number)
+	local minutes = math.floor(t / 60)
+	local seconds = t % 60
+	return string.format("%2d:%02d", minutes, seconds)
+end
+
 UpdateTimer.OnClientEvent:Connect(function(t: number, phaseName: string)
-	timerText.Text = tostring(t)
+	timerText.Text = formatTime(t)
 	phaseText.Text = phaseName
 end)
