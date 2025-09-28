@@ -1,8 +1,8 @@
 local GamePassCatalog = {}
 
 GamePassCatalog.Names = {
-	VIP = "1437841233",
-	GOLD_X2 = "1439757298",
+	-- VIP = "1437841233",
+	-- GOLD_X2 = "1439757298",
 }
 
 function GamePassCatalog.GetGamePassId(name: string)

@@ -9,7 +9,6 @@ local ProfileStore = require(ReplicatedStorage.Shared.Libraries.ProfileStore)
 local Template = require(ReplicatedStorage.Shared.Data.DataTemplate)
 local DataManager = require(ReplicatedStorage.Shared.Data.DataManager)
 local GamePassManager = require(ReplicatedStorage.Shared.Data.GamePassManager)
-local Game = require(ReplicatedStorage.Shared.Classes.Game)
 
 StarterPlayer.CharacterWalkSpeed = 32
 StarterPlayer.CharacterJumpHeight = 0
@@ -65,25 +64,6 @@ local function PlayerAdded(player: Player)
 	else
 		player:Kick("Data error has occurred. Please rejoin.")
 	end
-	player.CharacterAdded:Connect(function(character)
-		local g = Game.GetCurrent()
-		if g then
-			g:PlaceInZone(character)
-		end
-
-		local humanoid = character:WaitForChild("Humanoid") :: Humanoid
-		humanoid.WalkSpeed = 32
-		humanoid.JumpHeight = 0
-
-		humanoid:GetPropertyChangedSignal("WalkSpeed"):Connect(function()
-			if humanoid.WalkSpeed ~= 32 then
-				humanoid.WalkSpeed = 32
-			end
-			if humanoid.JumpHeight ~= 0 then
-				humanoid.JumpHeight = 0
-			end
-		end)
-	end)
 end
 
 -- Early Joiners
