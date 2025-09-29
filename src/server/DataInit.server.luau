@@ -2,16 +2,12 @@
 local Players = game:GetService("Players")
 local RunService = game:GetService("RunService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
-local StarterPlayer = game:GetService("StarterPlayer")
 
 -- ProfileStore/Modules
 local ProfileStore = require(ReplicatedStorage.Shared.Libraries.ProfileStore)
 local Template = require(ReplicatedStorage.Shared.Data.DataTemplate)
 local DataManager = require(ReplicatedStorage.Shared.Data.DataManager)
 local GamePassManager = require(ReplicatedStorage.Shared.Data.GamePassManager)
-
-StarterPlayer.CharacterWalkSpeed = 32
-StarterPlayer.CharacterJumpHeight = 0
 
 local function GetStoreName()
 	return RunService:IsStudio() and "Test" or "Live"
