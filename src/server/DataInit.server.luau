@@ -21,16 +21,12 @@ local function Initialize(player: Player, profile: typeof(PlayerStore:StartSessi
 	local leaderstats = Instance.new("Folder", player)
 	leaderstats.Name = "leaderstats"
 
-	local Squares = Instance.new("NumberValue", leaderstats)
-	Squares.Name = "Squares"
-	Squares.Value = profile.Data.Squares
-
-	local Wins = Instance.new("NumberValue", leaderstats)
-	Wins.Name = "Wins"
-	Wins.Value = profile.Data.Wins
+	local Money = Instance.new("NumberValue", leaderstats)
+	Money.Name = "Money"
+	Money.Value = profile.Data.Money
 
 	-- Update the UI
-	--ReplicatedStorage.Remotes.UpdateGold:FireClient(player, profile.Data.Gold)
+	ReplicatedStorage.Remotes.UpdateMoney:FireClient(player, profile.Data.Money)
 
 	GamePassManager.UpdateOwnershipData(player)
 end

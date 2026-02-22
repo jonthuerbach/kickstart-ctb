@@ -13,3 +13,10 @@ if not requestGamePass then
 	requestGamePass.Name = "RequestGamePass"
 	requestGamePass.Parent = remotes
 end
+
+local updateMoney = remotes:FindFirstChild("UpdateMoney")
+if not updateMoney then
+	updateMoney = Instance.new("RemoteEvent")
+	updateMoney.Name = "UpdateMoney"
+	updateMoney.Parent = remotes
+end

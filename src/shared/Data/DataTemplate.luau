@@ -1,6 +1,5 @@
 return {
-	Squares = 0,
-	Wins = 0,
+	Money = 0,
 
 	-- Inventory = {},
 
