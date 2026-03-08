@@ -2,8 +2,9 @@ local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local lavaPart = workspace:WaitForChild("World"):WaitForChild("Lava"):WaitForChild("LavaPart") :: BasePart
-local lavaOutline = workspace:WaitForChild("World"):WaitForChild("Lava"):WaitForChild("LavaOutline") :: BasePart
+local lavaFolder = workspace:WaitForChild("World"):WaitForChild("Lava")
+local lavaPart = lavaFolder:WaitForChild("LavaPart") :: BasePart
+local lavaOutline = lavaFolder:WaitForChild("LavaOutline") :: BasePart
 local lavaCountdownRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("LavaCountdown") :: RemoteEvent
 
 local RISE_MIN_STUDS = 8
@@ -14,13 +15,34 @@ local LOWER_DURATION = 0.5
 local INTERVAL_BETWEEN_CYCLES = 15
 
 local restCFrame = lavaPart.CFrame
-local currentTween: Tween? = nil
+local currentMoveTween: Tween? = nil
+local currentOutlineFadeTween: Tween? = nil
 local touchDebounceByCharacter: { [Model]: number } = {}
 
-local function stopCurrentTween()
-	if currentTween then
-		currentTween:Cancel()
-		currentTween = nil
+local function resolveOutlineHighlight(): Highlight?
+	local direct = lavaOutline:FindFirstChildOfClass("Highlight")
+	if direct then
+		return direct
+	end
+
+	for _, descendant in lavaFolder:GetDescendants() do
+		if descendant:IsA("Highlight") and descendant.Adornee == lavaOutline then
+			return descendant
+		end
+	end
+
+	return nil
+end
+
+local lavaOutlineHighlight = resolveOutlineHighlight()
+if not lavaOutlineHighlight then
+	warn("[LavaInit] Could not find a Highlight for LavaOutline")
+end
+
+local function stopCurrentMoveTween()
+	if currentMoveTween then
+		currentMoveTween:Cancel()
+		currentMoveTween = nil
 	end
 end
 
@@ -29,7 +51,7 @@ local function tweenToCFrame(target: CFrame, duration: number, part: BasePart)
 		part = lavaPart
 	end
 
-	stopCurrentTween()
+	stopCurrentMoveTween()
 
 	local tween = TweenService:Create(
 		part,
@@ -37,18 +59,27 @@ local function tweenToCFrame(target: CFrame, duration: number, part: BasePart)
 		{ CFrame = target }
 	)
 
-	currentTween = tween
+	currentMoveTween = tween
 	tween:Play()
 	tween.Completed:Wait()
 end
 
-local function tweenFadeOut(part: BasePart, duration: number)
+local function tweenOutlineFade(duration: number, targetTransparency: number)
+	if not lavaOutlineHighlight then
+		return
+	end
+
+	if currentOutlineFadeTween then
+		currentOutlineFadeTween:Cancel()
+		currentOutlineFadeTween = nil
+	end
+
 	local tween = TweenService:Create(
-		part,
+		lavaOutlineHighlight,
 		TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.Out),
-		{ Transparency = 1 }
+		{ OutlineTransparency = targetTransparency }
 	)
-	currentTween = tween
+	currentOutlineFadeTween = tween
 	tween:Play()
 end
 
@@ -87,6 +118,7 @@ task.spawn(function()
 		local raisedCFrame = restCFrame + Vector3.new(0, riseDistance, 0)
 
 		tweenToCFrame(raisedCFrame, 0.2, lavaOutline)
+		tweenOutlineFade(0, 0)
 
 		-- Countdown before rising
 		for t = COUNTDOWN_SECONDS, 1, -1 do
@@ -95,9 +127,8 @@ task.spawn(function()
 		end
 		lavaCountdownRemote:FireAllClients(0) -- tells clients to hide the label
 
-		tweenToCFrame(restCFrame, 0, lavaOutline)
 		task.spawn(function()
-			tweenFadeOut(lavaOutline, 1)
+			tweenOutlineFade(1, 1)
 		end)
 
 		tweenToCFrame(raisedCFrame, RISE_DURATION, lavaPart)
