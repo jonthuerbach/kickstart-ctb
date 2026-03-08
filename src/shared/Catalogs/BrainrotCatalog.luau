@@ -19,7 +19,7 @@ BrainrotCatalog.Names = {
 			chance = 9,
 		},
 		{ name = "Tim Cheese", modelName = "Tim Cheese", rarity = "Common", ratePerSecond = 5, chance = 6.5 },
-		{ name = "Gangster Footero", modelName = "Gangster Footero", rarity = "Common", ratePerSecond = 6, chance = 5 },
+		{ name = "Gangster Footera", modelName = "Gangster Footera", rarity = "Common", ratePerSecond = 6, chance = 5 },
 		{
 			name = "Penguino Cocosino",
 			modelName = "Penguino Cocosino",

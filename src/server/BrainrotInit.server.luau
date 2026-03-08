@@ -8,6 +8,8 @@ local brainrotsRoot = ReplicatedStorage:WaitForChild("Brainrots")
 
 local BRAINROT_LIFETIME_SECONDS = 60
 local BRAINROT_RESPAWN_DELAY_SECONDS = 30
+local BRAINROT_BILLBOARD_MAX_DISTANCE = 90
+local BRAINROT_BILLBOARD_STUDS_OFFSET = Vector3.new(0, 9, 0)
 local rng = Random.new()
 
 local activeHoldTracks: { [Player]: AnimationTrack } = {}
@@ -15,6 +17,14 @@ local spinnerStates: { [Model]: { token: number } } = {}
 local registeredSpinnerTops: { [Model]: boolean } = {}
 local typeAliases = {
 	Comon = "Common",
+}
+local rarityColors: { [string]: Color3 } = {
+	Common = Color3.fromRGB(220, 220, 220),
+	Uncommon = Color3.fromRGB(112, 219, 112),
+	Rare = Color3.fromRGB(88, 166, 255),
+	Epic = Color3.fromRGB(184, 120, 255),
+	Legendary = Color3.fromRGB(255, 190, 80),
+	Mythic = Color3.fromRGB(255, 100, 100),
 }
 
 local function stopHoldBrainrotAnimation(player: Player)
@@ -83,6 +93,96 @@ local function findPromptInModel(model: Model): ProximityPrompt?
 	end
 
 	return nil
+end
+
+local function findBillboardAnchorPart(model: Model): BasePart?
+	local root = model:FindFirstChild("RootPart")
+	if root and root:IsA("BasePart") then
+		return root
+	end
+
+	if model.PrimaryPart then
+		return model.PrimaryPart
+	end
+
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			return descendant
+		end
+	end
+
+	return nil
+end
+
+local function getRarityColor(rarity: string): Color3
+	return rarityColors[rarity] or Color3.fromRGB(255, 255, 255)
+end
+
+local function createBrainrotBillboard(brainrot: Model)
+	local anchorPart = findBillboardAnchorPart(brainrot)
+	if not anchorPart then
+		warn(`[BrainrotInit] Cannot create billboard, no anchor part found for {brainrot.Name}`)
+		return
+	end
+
+	local displayName = brainrot:GetAttribute("Name")
+	local rarity = brainrot:GetAttribute("Rarity")
+	local ratePerSecond = brainrot:GetAttribute("RatePerSecond")
+	local mutation = brainrot:GetAttribute("Mutation")
+
+	local displayText = typeof(displayName) == "string" and displayName or "Unknown"
+	local rarityText = typeof(rarity) == "string" and rarity or "Unknown"
+	local rateText = typeof(ratePerSecond) == "number" and tostring(ratePerSecond) or "?"
+	local rarityColor = getRarityColor(rarityText)
+
+	local billboard = Instance.new("BillboardGui")
+	billboard.Name = "BrainrotBillboard"
+	billboard.Adornee = anchorPart
+	billboard.Size = UDim2.new(16, 0, 12, 0)
+	billboard.StudsOffset = BRAINROT_BILLBOARD_STUDS_OFFSET
+	billboard.MaxDistance = BRAINROT_BILLBOARD_MAX_DISTANCE
+	billboard.AlwaysOnTop = true
+	billboard.Parent = brainrot
+
+	local container = Instance.new("Frame")
+	container.Name = "Container"
+	container.BackgroundTransparency = 1
+	container.Size = UDim2.fromScale(1, 1)
+	container.Parent = billboard
+
+	local layout = Instance.new("UIListLayout")
+	layout.FillDirection = Enum.FillDirection.Vertical
+	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
+	layout.VerticalAlignment = Enum.VerticalAlignment.Top
+	layout.Padding = UDim.new(0, 2)
+	layout.Parent = container
+
+	local function buildLabel(name: string, text: string, color: Color3): TextLabel
+		local label = Instance.new("TextLabel")
+		label.Name = name
+		label.BackgroundTransparency = 1
+		label.Size = UDim2.new(1, 0, 0.23, 0)
+		label.Text = text
+		label.TextScaled = true
+		label.TextColor3 = color
+		label.Font = Enum.Font.FredokaOne
+		label.Parent = container
+
+		local stroke = Instance.new("UIStroke")
+		stroke.Color = Color3.new(0, 0, 0)
+		stroke.Thickness = 1.4
+		stroke.Parent = label
+
+		return label
+	end
+
+	buildLabel("DisplayName", displayText, Color3.fromRGB(255, 255, 255))
+	buildLabel("Rarity", rarityText, rarityColor)
+	buildLabel("Rate", `Rate: {rateText}/s`, Color3.fromRGB(255, 255, 255))
+
+	if typeof(mutation) == "string" and mutation ~= "" then
+		buildLabel("Mutation", `Mutation: {mutation}`, Color3.fromRGB(255, 240, 130))
+	end
 end
 
 local function attachBrainrotAboveHead(player: Player, modelName: string, rarity: string)
@@ -283,9 +383,13 @@ local function spawnBrainrotForSpinnerTop(spinnerTop: Model)
 	brainrot:SetAttribute("Rarity", selected.rarity)
 	brainrot:SetAttribute("RatePerSecond", selected.ratePerSecond)
 	brainrot:SetAttribute("Chance", selected.chance)
+	if typeof(selected.mutation) == "string" then
+		brainrot:SetAttribute("Mutation", selected.mutation)
+	end
 	brainrot.Parent = spinnerTop
 
 	brainrot:PivotTo(brainrotAttachment.WorldCFrame)
+	createBrainrotBillboard(brainrot)
 
 	local spawnToken = incrementSpinnerToken(spinnerTop)
 
