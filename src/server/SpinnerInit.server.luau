@@ -1,63 +1,84 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local spinnerTemplate = ReplicatedStorage:WaitForChild("SpinnerTemplate")
-local spinnerAttachment =
-	workspace:FindFirstChild("World"):FindFirstChild("Spinners"):WaitForChild("SpinnerAttachment_1")
+local spinnerAttachmentsFolder = workspace:WaitForChild("World"):WaitForChild("Spinners")
 
-local STACK_COUNT = 5
-local MIN_SPEED = 20
-local MAX_SPEED = 50
-
-local currentPosition = spinnerAttachment.WorldPosition
 local fixedRotation = CFrame.Angles(0, 0, math.rad(90))
 
 local spinnerFolder = Instance.new("Folder")
 spinnerFolder.Name = "Spinners"
 spinnerFolder.Parent = workspace
 
-for i = 1, STACK_COUNT do
-	local spinnerClone = spinnerTemplate:Clone()
-	local trunk = spinnerClone:WaitForChild("SpinnerTrunk")
-	local primaryPart = spinnerClone.PrimaryPart
+local spinnerAttachments = {}
+for _, child in ipairs(spinnerAttachmentsFolder:GetChildren()) do
+	if child:IsA("Attachment") and child.Name:match("^SpinnerAttachment_%d+$") then
+		table.insert(spinnerAttachments, child)
+	end
+end
 
-	local randomSpeed = math.random(MIN_SPEED, MAX_SPEED) -- degrees/sec
+table.sort(spinnerAttachments, function(a, b)
+	local aNum = tonumber(a.Name:match("(%d+)$")) or math.huge
+	local bNum = tonumber(b.Name:match("(%d+)$")) or math.huge
+	return aNum < bNum
+end)
 
-	local randomColor = Color3.fromRGB(math.random(0, 255), math.random(0, 255), math.random(0, 255))
+if #spinnerAttachments == 0 then
+	warn("[SpinnerInit] No SpinnerAttachment_<n> attachments found in workspace.World.Spinners")
+	return
+end
 
-	spinnerClone.Name = "Spinner_" .. i
-	spinnerClone:SetAttribute("Speed", randomSpeed)
-	spinnerClone.SpinnerTrunk.Color = randomColor
-	spinnerClone.SpinnerBranch.Color = randomColor
-	spinnerClone:PivotTo(CFrame.new(currentPosition) * fixedRotation)
+for attachmentIndex, spinnerAttachment in ipairs(spinnerAttachments) do
+	local currentPosition = spinnerAttachment.WorldPosition
 
-	spinnerClone.Parent = spinnerFolder
+	for i = 1, spinnerAttachment:GetAttribute("Stacks") do
+		local spinnerClone = spinnerTemplate:Clone()
+		local trunk = spinnerClone:WaitForChild("SpinnerTrunk")
+		local primaryPart = spinnerClone.PrimaryPart
 
-	currentPosition = currentPosition + Vector3.new(0, trunk.Size.X, 0)
+		local randomSpeed =
+			math.random(spinnerAttachment:GetAttribute("MinSpeed"), spinnerAttachment:GetAttribute("MaxSpeed")) -- degrees/sec
 
-	local attachment = Instance.new("Attachment")
-	attachment.Name = "SpinAttachment"
-	attachment.Parent = primaryPart
+		spinnerClone.Name = `Spinner_{attachmentIndex}_{i}`
+		spinnerClone:SetAttribute("Speed", randomSpeed)
+		spinnerClone.SpinnerTrunk.Color = i % 2 == 0 and Color3.fromRGB(255, 255, 255)
+			or BrickColor.new("Bright red").Color
+		spinnerClone.SpinnerBranch.Color = i % 2 == 0 and Color3.fromRGB(255, 255, 255)
+			or BrickColor.new("Bright red").Color
+		spinnerClone:PivotTo(CFrame.new(currentPosition) * fixedRotation)
 
-	local angularVelocity = Instance.new("AngularVelocity")
-	angularVelocity.Attachment0 = attachment
-	angularVelocity.RelativeTo = Enum.ActuatorRelativeTo.Attachment0
-	angularVelocity.AngularVelocity = Vector3.new(math.rad(randomSpeed), 0, 0)
-	angularVelocity.MaxTorque = math.huge
-	angularVelocity.Parent = primaryPart
+		spinnerClone.Parent = spinnerFolder
 
-	if i == STACK_COUNT then
-		local brainrot =
-			ReplicatedStorage:FindFirstChild("Brainrots"):FindFirstChild("Common"):WaitForChild("Matteo"):Clone()
-		local brainrotPosition = spinnerClone.SpinnerTrunk.Position
-			+ Vector3.new(0, spinnerClone.SpinnerTrunk.Size.X / 2, 0)
-		local brainrotRotation = CFrame.Angles(0, math.rad(180), 0)
+		currentPosition = currentPosition + Vector3.new(0, trunk.Size.X, 0)
 
-		spinnerClone.Name = "SpinnerTop"
+		local spinAttachment = Instance.new("Attachment")
+		spinAttachment.Name = "SpinAttachment"
+		spinAttachment.Parent = primaryPart
 
-		brainrot.Name = "Brainrot"
-		brainrot:PivotTo(CFrame.new(brainrotPosition) * brainrotRotation)
-		brainrot:SetAttribute("Name", "Matteo")
-		brainrot:SetAttribute("Rarity", "Common")
-		brainrot.Parent = spinnerClone
+		local angularVelocity = Instance.new("AngularVelocity")
+		angularVelocity.Attachment0 = spinAttachment
+		angularVelocity.RelativeTo = Enum.ActuatorRelativeTo.Attachment0
+		angularVelocity.AngularVelocity = Vector3.new(math.rad(randomSpeed), 0, 0)
+		angularVelocity.MaxTorque = math.huge
+		angularVelocity.Parent = primaryPart
+
+		if i == spinnerAttachment:GetAttribute("Stacks") then
+			local brainrot =
+				ReplicatedStorage:FindFirstChild("Brainrots"):FindFirstChild("Common"):WaitForChild("Matteo"):Clone()
+			local brainrotPosition = spinnerClone.SpinnerTrunk.Position
+				+ Vector3.new(0, spinnerClone.SpinnerTrunk.Size.X / 2, 0)
+			local brainrotRotation = CFrame.Angles(0, math.rad(180), 0)
+
+			if attachmentIndex == 1 then
+				spinnerClone.Name = "SpinnerTop"
+			else
+				spinnerClone.Name = `SpinnerTop_{attachmentIndex}`
+			end
+
+			brainrot.Name = "Brainrot"
+			brainrot:PivotTo(CFrame.new(brainrotPosition) * brainrotRotation)
+			brainrot:SetAttribute("Name", "Matteo")
+			brainrot:SetAttribute("Rarity", "Common")
+			brainrot.Parent = spinnerClone
+		end
 	end
 end
