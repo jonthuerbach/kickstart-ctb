@@ -7,6 +7,7 @@ Plot.__index = Plot
 export type Plot = typeof(setmetatable(
 	{} :: {
 		plotId: string,
+		attachmentName: string,
 		ownerUserId: number?,
 		claimedAt: number?,
 		_model: Model,
@@ -15,25 +16,26 @@ export type Plot = typeof(setmetatable(
 	Plot
 ))
 
--- The attachment can be any Attachment in Workspace.Plots.
+-- The attachment can be any Attachment in Workspace.World.Plots.
 -- The PlotTemplate model must have a PrimaryPart set for PivotTo to work correctly.
 -- The PlotTemplate model must contain an OwnerBadge part with a child Attachment.
-function Plot.new(plotId: string, attachment: Attachment): Plot
+function Plot.new(plotId: string, attachment: Attachment, parent: Instance?): Plot
 	local template = ReplicatedStorage:WaitForChild("Templates"):WaitForChild("PlotTemplate") :: Model
 	local model = template:Clone()
 	model.Name = plotId
 	model:PivotTo(attachment.WorldCFrame)
-	model.Parent = workspace:FindFirstChild("Plots")
+	model.Parent = parent or workspace
 
 	local self = setmetatable({
 		plotId = plotId,
+		attachmentName = attachment.Name,
 		ownerUserId = nil,
 		claimedAt = nil,
 		_model = model,
 		_badgeGui = nil,
 	}, Plot)
 
-	self:_setupVendor()
+	self:_setupPedestals()
 
 	return self
 end
@@ -174,6 +176,30 @@ function Plot._buildOwnerBadge(self: Plot, player: Player)
 	end)
 end
 
-function Plot._setupPedestals(self: Plot) end
+function Plot._setupPedestals(self: Plot)
+	local pedestalTemplate = ReplicatedStorage:WaitForChild("Templates"):WaitForChild("PedestalTemplate") :: Model
+	local pedestalsFolder = self._model:FindFirstChild("Level01")
+	if not pedestalsFolder then
+		warn(`[Plot] Level01 is missing on plot {self.plotId}`)
+		return
+	end
+
+	pedestalsFolder = pedestalsFolder:FindFirstChild("Pedestals")
+	if not pedestalsFolder then
+		warn(`[Plot] Pedestals folder is missing on plot {self.plotId}`)
+		return
+	end
+
+	for _, child in pedestalsFolder:GetChildren() do
+		if not child:IsA("Attachment") then
+			continue
+		end
+
+		local pedestalClone = pedestalTemplate:Clone()
+		pedestalClone.Name = child.Name:gsub("Attachment", "")
+		pedestalClone.Parent = self._model
+		pedestalClone:PivotTo(child.WorldCFrame)
+	end
+end
 
 return Plot

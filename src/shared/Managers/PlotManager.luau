@@ -5,31 +5,63 @@ local Plot = require(ReplicatedStorage.Shared.Classes.Plot)
 local PlotManager = {}
 
 local _plots: { [string]: Plot.Plot } = {}
+local _initialized = false
 
--- Scans Workspace.Plots for Attachment children and spawns a PlotTemplate clone
+local function toPlotId(attachmentName: string): string
+	local plotNumber = attachmentName:match("(%d+)$")
+	if plotNumber then
+		return `Plot_{plotNumber}`
+	end
+
+	return attachmentName
+end
+
+-- Scans Workspace.World.Plots for Attachment children and spawns a PlotTemplate clone
 -- at each one. Safe to call once at server startup.
 function PlotManager.Initialize()
-	local plotsFolder = workspace:WaitForChild("Plots")
+	if _initialized then
+		return
+	end
+
+	local worldFolder = workspace:WaitForChild("World")
+	local plotsFolder = worldFolder:WaitForChild("Plots")
 
 	for _, child in plotsFolder:GetChildren() do
 		if not child:IsA("Attachment") then
 			continue
 		end
 
-		local plot = Plot.new(child.Name, child :: Attachment)
-		_plots[child.Name] = plot
-		print(`[PlotManager] Initialized plot: {child.Name}`)
+		local plotId = toPlotId(child.Name)
+		local plot = Plot.new(plotId, child :: Attachment, workspace)
+		_plots[plotId] = plot
+		print(`[PlotManager] Initialized plot: {plotId}`)
 	end
+
+	_initialized = true
 end
 
 -- Assigns the player to the first available plot (sorted ascending by name
 -- so Plot01 is always preferred over Plot02, etc.).
 function PlotManager.AssignNextAvailable(player: Player): Plot.Plot?
+	local current = PlotManager.GetPlotForPlayer(player)
+	if current then
+		return current
+	end
+
 	local sortedIds = {}
 	for plotId in _plots do
 		table.insert(sortedIds, plotId)
 	end
-	table.sort(sortedIds)
+	table.sort(sortedIds, function(a, b)
+		local aNum = tonumber(a:match("(%d+)$"))
+		local bNum = tonumber(b:match("(%d+)$"))
+
+		if aNum and bNum then
+			return aNum < bNum
+		end
+
+		return a < b
+	end)
 
 	for _, plotId in sortedIds do
 		local plot = _plots[plotId]

@@ -2,7 +2,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local spinnerTemplate = ReplicatedStorage:WaitForChild("SpinnerTemplate")
 local spinnerAttachment =
-	workspace:FindFirstChild("Attachments"):FindFirstChild("Spinners"):WaitForChild("SpinnerAttachment_1")
+	workspace:FindFirstChild("World"):FindFirstChild("Spinners"):WaitForChild("SpinnerAttachment_1")
 
 local STACK_COUNT = 5
 local MIN_SPEED = 20
