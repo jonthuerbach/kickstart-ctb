@@ -1,7 +1,9 @@
 local TweenService = game:GetService("TweenService")
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local lavaPart = workspace:WaitForChild("World"):WaitForChild("Lava"):WaitForChild("LavaPart") :: BasePart
+local lavaCountdownRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("LavaCountdown") :: RemoteEvent
 
 local RISE_MIN_STUDS = 8
 local RISE_MAX_STUDS = 32
@@ -62,8 +64,17 @@ end
 
 lavaPart.Touched:Connect(tryKillPlayerFromHit)
 
+local COUNTDOWN_SECONDS = 5
+
 task.spawn(function()
 	while true do
+		-- Countdown before rising
+		for t = COUNTDOWN_SECONDS, 1, -1 do
+			lavaCountdownRemote:FireAllClients(t)
+			task.wait(1)
+		end
+		lavaCountdownRemote:FireAllClients(0) -- tells clients to hide the label
+
 		local riseDistance = math.random(RISE_MIN_STUDS, RISE_MAX_STUDS)
 		local raisedCFrame = restCFrame + Vector3.new(0, riseDistance, 0)
 

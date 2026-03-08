@@ -20,3 +20,10 @@ if not updateMoney then
 	updateMoney.Name = "UpdateMoney"
 	updateMoney.Parent = remotes
 end
+
+local lavaCountdown = remotes:FindFirstChild("LavaCountdown")
+if not lavaCountdown then
+	lavaCountdown = Instance.new("RemoteEvent")
+	lavaCountdown.Name = "LavaCountdown"
+	lavaCountdown.Parent = remotes
+end
