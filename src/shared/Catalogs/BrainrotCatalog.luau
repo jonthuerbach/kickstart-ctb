@@ -1,7 +1,7 @@
 local BrainrotCatalog = {}
 
 BrainrotCatalog.Names = {
-	COMMON = {
+	Common = {
 		{ name = "Matteo", modelName = "Matteo", rarity = "Common", ratePerSecond = 1, chance = 42 },
 		{ name = "Avocadini Guffo", modelName = "Avocadini Guffo", rarity = "Common", ratePerSecond = 2, chance = 20 },
 		{
