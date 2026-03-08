@@ -64,7 +64,7 @@ local function tweenToCFrame(target: CFrame, duration: number, part: BasePart)
 	tween.Completed:Wait()
 end
 
-local function tweenOutlineFade(duration: number, targetTransparency: number)
+local function tweenOutlineFade(duration: number, targetOutlineTransparency: number, targetFillTransparency: number)
 	if not lavaOutlineHighlight then
 		return
 	end
@@ -77,7 +77,10 @@ local function tweenOutlineFade(duration: number, targetTransparency: number)
 	local tween = TweenService:Create(
 		lavaOutlineHighlight,
 		TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.Out),
-		{ OutlineTransparency = targetTransparency }
+		{
+			OutlineTransparency = targetOutlineTransparency,
+			FillTransparency = targetFillTransparency,
+		}
 	)
 	currentOutlineFadeTween = tween
 	tween:Play()
@@ -118,7 +121,7 @@ task.spawn(function()
 		local raisedCFrame = restCFrame + Vector3.new(0, riseDistance, 0)
 
 		tweenToCFrame(raisedCFrame, 0.2, lavaOutline)
-		tweenOutlineFade(0, 0)
+		tweenOutlineFade(0, 0, 0.75)
 
 		-- Countdown before rising
 		for t = COUNTDOWN_SECONDS, 1, -1 do
@@ -128,7 +131,7 @@ task.spawn(function()
 		lavaCountdownRemote:FireAllClients(0) -- tells clients to hide the label
 
 		task.spawn(function()
-			tweenOutlineFade(1, 1)
+			tweenOutlineFade(1, 1, 1)
 		end)
 
 		tweenToCFrame(raisedCFrame, RISE_DURATION, lavaPart)
