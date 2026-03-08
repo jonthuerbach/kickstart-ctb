@@ -10,7 +10,7 @@ local lavaCountdownRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChi
 local RISE_MIN_STUDS = 8
 local RISE_MAX_STUDS = 32
 local RISE_DURATION = 3
-local HOLD_DURATION = 10
+local HOLD_DURATION = 5
 local LOWER_DURATION = 0.5
 local INTERVAL_BETWEEN_CYCLES = 15
 
