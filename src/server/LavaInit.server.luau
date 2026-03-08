@@ -64,7 +64,12 @@ local function tweenToCFrame(target: CFrame, duration: number, part: BasePart)
 	tween.Completed:Wait()
 end
 
-local function tweenOutlineFade(duration: number, targetOutlineTransparency: number, targetFillTransparency: number)
+local function tweenOutlineFade(
+	duration: number,
+	targetOutlineTransparency: number,
+	targetFillTransparency: number,
+	onCompleted: (() -> ())?
+)
 	if not lavaOutlineHighlight then
 		return
 	end
@@ -83,6 +88,13 @@ local function tweenOutlineFade(duration: number, targetOutlineTransparency: num
 		}
 	)
 	currentOutlineFadeTween = tween
+	if onCompleted then
+		tween.Completed:Once(function(playbackState: Enum.PlaybackState)
+			if playbackState == Enum.PlaybackState.Completed then
+				onCompleted()
+			end
+		end)
+	end
 	tween:Play()
 end
 
@@ -131,12 +143,16 @@ task.spawn(function()
 		lavaCountdownRemote:FireAllClients(0) -- tells clients to hide the label
 
 		task.spawn(function()
-			tweenOutlineFade(1, 1, 1)
+			tweenOutlineFade(1, 1, 1, function()
+				lavaOutline.CFrame = restCFrame
+			end)
+			lavaOutline.Material = Enum.Material.SmoothPlastic
 		end)
 
 		tweenToCFrame(raisedCFrame, RISE_DURATION, lavaPart)
 		task.wait(HOLD_DURATION)
 		tweenToCFrame(restCFrame, LOWER_DURATION, lavaPart)
+		lavaOutline.Material = Enum.Material.Glass
 		task.wait(INTERVAL_BETWEEN_CYCLES)
 	end
 end)
