@@ -1,6 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local spinnerTemplate = ReplicatedStorage:WaitForChild("SpinnerTemplate")
+local spinnerTemplate = ReplicatedStorage:FindFirstChild("Templates"):WaitForChild("SpinnerTemplate")
 local spinnerAttachmentsFolder = workspace:WaitForChild("World"):WaitForChild("Spinners")
 
 local fixedRotation = CFrame.Angles(0, 0, math.rad(90))
