@@ -3,29 +3,46 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local lavaFolder = workspace:WaitForChild("World"):WaitForChild("Lava")
-local lavaPart = lavaFolder:WaitForChild("LavaPart") :: BasePart
-local lavaOutline = lavaFolder:WaitForChild("LavaOutline") :: BasePart
 local lavaCountdownRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("LavaCountdown") :: RemoteEvent
 
-local RISE_MIN_STUDS = 8
-local RISE_MAX_STUDS = 32
+local SECTION_NAME_PATTERN = "^Section_"
+local RISE_MIN_STUDS_ATTRIBUTE = "RiseMinStuds"
+local RISE_MAX_STUDS_ATTRIBUTE = "RiseMaxStuds"
+
 local RISE_DURATION = 3
 local HOLD_DURATION = 5
 local LOWER_DURATION = 0.5
 local INTERVAL_BETWEEN_CYCLES = 15
 
-local restCFrame = lavaPart.CFrame
-local currentMoveTween: Tween? = nil
-local currentOutlineFadeTween: Tween? = nil
 local touchDebounceByCharacter: { [Model]: number } = {}
 
-local function resolveOutlineHighlight(): Highlight?
+type LavaSection = {
+	folder: Instance,
+	name: string,
+	lavaPart: BasePart,
+	lavaOutline: BasePart,
+	restPartCFrame: CFrame,
+	restOutlineCFrame: CFrame,
+	riseMinStuds: number,
+	riseMaxStuds: number,
+	outlineHighlight: Highlight?,
+	currentPartMoveTween: Tween?,
+	currentOutlineMoveTween: Tween?,
+	currentOutlineFadeTween: Tween?,
+}
+
+type SectionTargets = {
+	raisedPartCFrame: CFrame,
+	raisedOutlineCFrame: CFrame,
+}
+
+local function resolveOutlineHighlight(sectionFolder: Instance, lavaOutline: BasePart): Highlight?
 	local direct = lavaOutline:FindFirstChildOfClass("Highlight")
 	if direct then
 		return direct
 	end
 
-	for _, descendant in lavaFolder:GetDescendants() do
+	for _, descendant in sectionFolder:GetDescendants() do
 		if descendant:IsA("Highlight") and descendant.Adornee == lavaOutline then
 			return descendant
 		end
@@ -34,60 +51,133 @@ local function resolveOutlineHighlight(): Highlight?
 	return nil
 end
 
-local lavaOutlineHighlight = resolveOutlineHighlight()
-if not lavaOutlineHighlight then
-	warn("[LavaInit] Could not find a Highlight for LavaOutline")
-end
-
-local function stopCurrentMoveTween()
-	if currentMoveTween then
-		currentMoveTween:Cancel()
-		currentMoveTween = nil
+local function stopTween(tween: Tween?)
+	if tween then
+		tween:Cancel()
 	end
 end
 
-local function tweenToCFrame(target: CFrame, duration: number, part: BasePart)
-	if not part then
-		part = lavaPart
-	end
-
-	stopCurrentMoveTween()
-
-	local tween = TweenService:Create(
+local function createMoveTween(part: BasePart, target: CFrame, duration: number): Tween
+	return TweenService:Create(
 		part,
 		TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.Out),
 		{ CFrame = target }
 	)
+end
 
-	currentMoveTween = tween
+local function playPartMoveTween(section: LavaSection, target: CFrame, duration: number)
+	stopTween(section.currentPartMoveTween)
+	local tween = createMoveTween(section.lavaPart, target, duration)
+	section.currentPartMoveTween = tween
 	tween:Play()
-	tween.Completed:Wait()
+	tween.Completed:Once(function()
+		if section.currentPartMoveTween == tween then
+			section.currentPartMoveTween = nil
+		end
+	end)
+end
+
+local function playOutlineMoveTween(section: LavaSection, target: CFrame, duration: number)
+	stopTween(section.currentOutlineMoveTween)
+	local tween = createMoveTween(section.lavaOutline, target, duration)
+	section.currentOutlineMoveTween = tween
+	tween:Play()
+	tween.Completed:Once(function()
+		if section.currentOutlineMoveTween == tween then
+			section.currentOutlineMoveTween = nil
+		end
+	end)
+end
+
+local function getRiseRange(sectionFolder: Instance): (number?, number?)
+	local riseMinStuds = sectionFolder:GetAttribute(RISE_MIN_STUDS_ATTRIBUTE)
+	local riseMaxStuds = sectionFolder:GetAttribute(RISE_MAX_STUDS_ATTRIBUTE)
+
+	if typeof(riseMinStuds) ~= "number" or typeof(riseMaxStuds) ~= "number" then
+		warn(
+			`[LavaInit] Skipping {sectionFolder.Name}: expected numeric attributes "{RISE_MIN_STUDS_ATTRIBUTE}" and "{RISE_MAX_STUDS_ATTRIBUTE}".`
+		)
+		return nil, nil
+	end
+
+	if riseMinStuds < 0 or riseMaxStuds < 0 or riseMinStuds > riseMaxStuds then
+		warn(
+			`[LavaInit] Skipping {sectionFolder.Name}: invalid rise range ({riseMinStuds}, {riseMaxStuds}). Expected 0 <= min <= max.`
+		)
+		return nil, nil
+	end
+
+	return riseMinStuds, riseMaxStuds
+end
+
+local function buildSections(): { LavaSection }
+	local sections = {}
+
+	for _, child in lavaFolder:GetChildren() do
+		if child:IsA("Folder") and string.match(child.Name, SECTION_NAME_PATTERN) then
+			local lavaPart = child:FindFirstChild("LavaPart")
+			local lavaOutline = child:FindFirstChild("LavaOutline")
+			if not lavaPart or not lavaPart:IsA("BasePart") then
+				warn(`[LavaInit] Skipping {child.Name}: missing BasePart named "LavaPart".`)
+				continue
+			end
+			if not lavaOutline or not lavaOutline:IsA("BasePart") then
+				warn(`[LavaInit] Skipping {child.Name}: missing BasePart named "LavaOutline".`)
+				continue
+			end
+
+			local riseMinStuds, riseMaxStuds = getRiseRange(child)
+			if not riseMinStuds or not riseMaxStuds then
+				continue
+			end
+
+			local outlineHighlight = resolveOutlineHighlight(child, lavaOutline)
+			if not outlineHighlight then
+				warn(`[LavaInit] {child.Name}: could not find a Highlight for LavaOutline; fade will be skipped.`)
+			end
+
+			table.insert(sections, {
+				folder = child,
+				name = child.Name,
+				lavaPart = lavaPart,
+				lavaOutline = lavaOutline,
+				restPartCFrame = lavaPart.CFrame,
+				restOutlineCFrame = lavaOutline.CFrame,
+				riseMinStuds = riseMinStuds,
+				riseMaxStuds = riseMaxStuds,
+				outlineHighlight = outlineHighlight,
+				currentPartMoveTween = nil,
+				currentOutlineMoveTween = nil,
+				currentOutlineFadeTween = nil,
+			})
+		end
+	end
+
+	return sections
 end
 
 local function tweenOutlineFade(
+	section: LavaSection,
 	duration: number,
 	targetOutlineTransparency: number,
 	targetFillTransparency: number,
 	onCompleted: (() -> ())?
 )
-	if not lavaOutlineHighlight then
+	if not section.outlineHighlight then
 		return
 	end
 
-	if currentOutlineFadeTween then
-		currentOutlineFadeTween:Cancel()
-		currentOutlineFadeTween = nil
-	end
+	stopTween(section.currentOutlineFadeTween)
 
 	local tween = TweenService:Create(
-		lavaOutlineHighlight,
+		section.outlineHighlight,
 		TweenInfo.new(duration, Enum.EasingStyle.Linear, Enum.EasingDirection.Out),
 		{
 			OutlineTransparency = targetOutlineTransparency,
 			FillTransparency = targetFillTransparency,
 		}
 	)
-	currentOutlineFadeTween = tween
+	section.currentOutlineFadeTween = tween
 	if onCompleted then
 		tween.Completed:Once(function(playbackState: Enum.PlaybackState)
 			if playbackState == Enum.PlaybackState.Completed then
@@ -95,6 +185,11 @@ local function tweenOutlineFade(
 			end
 		end)
 	end
+	tween.Completed:Once(function()
+		if section.currentOutlineFadeTween == tween then
+			section.currentOutlineFadeTween = nil
+		end
+	end)
 	tween:Play()
 end
 
@@ -123,17 +218,34 @@ local function tryKillPlayerFromHit(hit: BasePart)
 	end
 end
 
-lavaPart.Touched:Connect(tryKillPlayerFromHit)
+local lavaSections = buildSections()
+if #lavaSections == 0 then
+	warn("[LavaInit] No valid lava sections found under workspace.World.Lava (expected folders named Section_*).")
+	return
+end
+
+for _, section in lavaSections do
+	section.lavaPart.Touched:Connect(tryKillPlayerFromHit)
+end
 
 local COUNTDOWN_SECONDS = 5
 
 task.spawn(function()
 	while true do
-		local riseDistance = math.random(RISE_MIN_STUDS, RISE_MAX_STUDS)
-		local raisedCFrame = restCFrame + Vector3.new(0, riseDistance, 0)
+		local cycleTargetsBySection: { [LavaSection]: SectionTargets } = {}
 
-		tweenToCFrame(raisedCFrame, 0.2, lavaOutline)
-		tweenOutlineFade(0, 0, 0.75)
+		for _, section in lavaSections do
+			local riseDistance = math.random(section.riseMinStuds, section.riseMaxStuds)
+			local riseOffset = Vector3.new(0, riseDistance, 0)
+			local sectionTargets = {
+				raisedPartCFrame = section.restPartCFrame + riseOffset,
+				raisedOutlineCFrame = section.restOutlineCFrame + riseOffset,
+			}
+			cycleTargetsBySection[section] = sectionTargets
+
+			playOutlineMoveTween(section, sectionTargets.raisedOutlineCFrame, 0.2)
+			tweenOutlineFade(section, 0, 0, 0.75)
+		end
 
 		-- Countdown before rising
 		for t = COUNTDOWN_SECONDS, 1, -1 do
@@ -142,17 +254,29 @@ task.spawn(function()
 		end
 		lavaCountdownRemote:FireAllClients(0) -- tells clients to hide the label
 
-		task.spawn(function()
-			tweenOutlineFade(1, 1, 1, function()
-				lavaOutline.CFrame = restCFrame
+		for _, section in lavaSections do
+			task.spawn(function()
+				tweenOutlineFade(section, 1, 1, 1, function()
+					section.lavaOutline.CFrame = section.restOutlineCFrame
+				end)
+				section.lavaOutline.Material = Enum.Material.SmoothPlastic
 			end)
-			lavaOutline.Material = Enum.Material.SmoothPlastic
-		end)
+		end
 
-		tweenToCFrame(raisedCFrame, RISE_DURATION, lavaPart)
+		for _, section in lavaSections do
+			local sectionTargets = cycleTargetsBySection[section]
+			if sectionTargets then
+				playPartMoveTween(section, sectionTargets.raisedPartCFrame, RISE_DURATION)
+			end
+		end
+		task.wait(RISE_DURATION)
 		task.wait(HOLD_DURATION)
-		tweenToCFrame(restCFrame, LOWER_DURATION, lavaPart)
-		lavaOutline.Material = Enum.Material.Glass
+
+		for _, section in lavaSections do
+			playPartMoveTween(section, section.restPartCFrame, LOWER_DURATION)
+			section.lavaOutline.Material = Enum.Material.Glass
+		end
+		task.wait(LOWER_DURATION)
 		task.wait(INTERVAL_BETWEEN_CYCLES)
 	end
 end)
