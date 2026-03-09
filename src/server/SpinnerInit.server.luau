@@ -33,6 +33,7 @@ for attachmentIndex, spinnerAttachment in ipairs(spinnerAttachments) do
 	local minSpeed = spinnerAttachment:GetAttribute("MinSpeed")
 	local maxSpeed = spinnerAttachment:GetAttribute("MaxSpeed")
 	local spawnType = spinnerAttachment:GetAttribute("Type")
+	local scale = spinnerAttachment:GetAttribute("Scale")
 
 	if typeof(stacks) ~= "number" or stacks < 1 then
 		warn(`[SpinnerInit] {spinnerAttachment.Name} has invalid Stacks attribute`)
@@ -49,8 +50,14 @@ for attachmentIndex, spinnerAttachment in ipairs(spinnerAttachments) do
 		spawnType = ""
 	end
 
+	if typeof(scale) ~= "number" or scale <= 0 then
+		warn(`[SpinnerInit] {spinnerAttachment.Name} has invalid Scale attribute; defaulting to 1`)
+		scale = 1
+	end
+
 	for i = 1, stacks do
 		local spinnerClone = spinnerTemplate:Clone()
+		spinnerClone:ScaleTo(scale)
 		local trunk = spinnerClone:WaitForChild("SpinnerTrunk")
 		local primaryPart = spinnerClone.PrimaryPart
 
