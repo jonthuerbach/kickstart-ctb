@@ -157,11 +157,11 @@ local function createBrainrotBillboard(brainrot: Model)
 	layout.Padding = UDim.new(0, 2)
 	layout.Parent = container
 
-	local function buildLabel(name: string, text: string, color: Color3): TextLabel
+	local function buildLabel(name: string, text: string, color: Color3, size: number): TextLabel
 		local label = Instance.new("TextLabel")
 		label.Name = name
 		label.BackgroundTransparency = 1
-		label.Size = UDim2.new(1, 0, 0.23, 0)
+		label.Size = UDim2.new(1, 0, size, 0)
 		label.Text = text
 		label.TextScaled = true
 		label.TextColor3 = color
@@ -170,18 +170,19 @@ local function createBrainrotBillboard(brainrot: Model)
 
 		local stroke = Instance.new("UIStroke")
 		stroke.Color = Color3.new(0, 0, 0)
-		stroke.Thickness = 1.4
+		stroke.StrokeSizingMode = Enum.StrokeSizingMode.ScaledSize
+		stroke.Thickness = 0.02
 		stroke.Parent = label
 
 		return label
 	end
 
-	buildLabel("DisplayName", displayText, Color3.fromRGB(255, 255, 255))
-	buildLabel("Rarity", rarityText, rarityColor)
-	buildLabel("Rate", `Rate: {rateText}/s`, Color3.fromRGB(255, 255, 255))
+	buildLabel("DisplayName", displayText, Color3.fromRGB(255, 255, 255), 0.25)
+	buildLabel("Rarity", rarityText, rarityColor, 0.16)
+	buildLabel("Rate", `${rateText}/s`, Color3.fromRGB(0, 255, 0), 0.25)
 
 	if typeof(mutation) == "string" and mutation ~= "" then
-		buildLabel("Mutation", `Mutation: {mutation}`, Color3.fromRGB(255, 240, 130))
+		buildLabel("Mutation", `Mutation: {mutation}`, Color3.fromRGB(255, 240, 130), 0.25)
 	end
 end
 
