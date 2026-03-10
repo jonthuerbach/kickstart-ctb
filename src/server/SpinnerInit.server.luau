@@ -1,6 +1,7 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
-local spinnerTemplate = ReplicatedStorage:FindFirstChild("Templates"):WaitForChild("SpinnerTemplate")
+local spinnerTemplatesFolder = ReplicatedStorage:WaitForChild("Templates"):WaitForChild("Spinners")
+local defaultSpinnerTemplateName = "SpinnerTemplate_1"
 local spinnerAttachmentsFolder = workspace:WaitForChild("World"):WaitForChild("Spinners")
 
 local fixedRotation = CFrame.Angles(0, 0, math.rad(90))
@@ -8,6 +9,52 @@ local fixedRotation = CFrame.Angles(0, 0, math.rad(90))
 local spinnerFolder = Instance.new("Folder")
 spinnerFolder.Name = "Spinners"
 spinnerFolder.Parent = workspace
+
+local function isValidSpinnerTemplate(template: Instance?): boolean
+	if not template or not template:IsA("Model") then
+		return false
+	end
+
+	local asModel = template :: Model
+	if not asModel.PrimaryPart then
+		return false
+	end
+
+	local trunk = asModel:FindFirstChild("SpinnerTrunk")
+	if not trunk or not trunk:IsA("BasePart") then
+		return false
+	end
+
+	return true
+end
+
+local defaultSpinnerTemplate = spinnerTemplatesFolder:FindFirstChild(defaultSpinnerTemplateName)
+if not isValidSpinnerTemplate(defaultSpinnerTemplate) then
+	warn(
+		`[SpinnerInit] Missing or invalid default template "{defaultSpinnerTemplateName}" in ReplicatedStorage.Templates.Spinners`
+	)
+	return
+end
+
+local function resolveSpinnerTemplate(spinnerAttachment: Attachment): Model?
+	local templateName = spinnerAttachment:GetAttribute("SpinnerTemplate")
+	if typeof(templateName) ~= "string" or templateName == "" then
+		warn(
+			`[SpinnerInit] {spinnerAttachment.Name} is missing SpinnerTemplate attribute; falling back to {defaultSpinnerTemplateName}`
+		)
+		return defaultSpinnerTemplate :: Model
+	end
+
+	local template = spinnerTemplatesFolder:FindFirstChild(templateName)
+	if not isValidSpinnerTemplate(template) then
+		warn(
+			`[SpinnerInit] {spinnerAttachment.Name} references missing/invalid template "{templateName}"; falling back to {defaultSpinnerTemplateName}`
+		)
+		return defaultSpinnerTemplate :: Model
+	end
+
+	return template :: Model
+end
 
 local spinnerAttachments = {}
 for _, child in ipairs(spinnerAttachmentsFolder:GetChildren()) do
@@ -33,7 +80,11 @@ for attachmentIndex, spinnerAttachment in ipairs(spinnerAttachments) do
 	local minSpeed = spinnerAttachment:GetAttribute("MinSpeed")
 	local maxSpeed = spinnerAttachment:GetAttribute("MaxSpeed")
 	local spawnType = spinnerAttachment:GetAttribute("Type")
-	local scale = spinnerAttachment:GetAttribute("Scale")
+	local spinnerTemplate = resolveSpinnerTemplate(spinnerAttachment)
+	if not spinnerTemplate then
+		warn(`[SpinnerInit] {spinnerAttachment.Name} could not resolve a spinner template`)
+		continue
+	end
 
 	if typeof(stacks) ~= "number" or stacks < 1 then
 		warn(`[SpinnerInit] {spinnerAttachment.Name} has invalid Stacks attribute`)
@@ -50,14 +101,8 @@ for attachmentIndex, spinnerAttachment in ipairs(spinnerAttachments) do
 		spawnType = ""
 	end
 
-	if typeof(scale) ~= "number" or scale <= 0 then
-		warn(`[SpinnerInit] {spinnerAttachment.Name} has invalid Scale attribute; defaulting to 1`)
-		scale = 1
-	end
-
 	for i = 1, stacks do
 		local spinnerClone = spinnerTemplate:Clone()
-		spinnerClone:ScaleTo(scale)
 		local trunk = spinnerClone:WaitForChild("SpinnerTrunk")
 		local primaryPart = spinnerClone.PrimaryPart
 
