@@ -8,6 +8,7 @@ local ProfileStore = require(ReplicatedStorage.Shared.Libraries.ProfileStore)
 local Template = require(ReplicatedStorage.Shared.Data.DataTemplate)
 local DataManager = require(ReplicatedStorage.Shared.Data.DataManager)
 local GamePassManager = require(ReplicatedStorage.Shared.Data.GamePassManager)
+local BrainrotToolManager = require(ReplicatedStorage.Shared.Managers.BrainrotToolManager)
 
 local function GetStoreName()
 	return RunService:IsStudio() and "Test" or "Live"
@@ -29,6 +30,7 @@ local function Initialize(player: Player, profile: typeof(PlayerStore:StartSessi
 	ReplicatedStorage.Remotes.UpdateMoney:FireClient(player, profile.Data.Money)
 
 	GamePassManager.UpdateOwnershipData(player)
+	BrainrotToolManager.RestoreOwnedTools(player)
 end
 
 local function PlayerAdded(player: Player)

@@ -1,7 +1,7 @@
 return {
 	Money = 0,
 
-	-- Inventory = {},
+	BrainrotTools = {},
 
 	GamePasses = {
 		["1502122570"] = { owned = false, awarded = false },

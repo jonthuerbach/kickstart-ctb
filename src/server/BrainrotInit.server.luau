@@ -2,19 +2,24 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BrainrotCatalog = require(ReplicatedStorage.Shared.Catalogs.BrainrotCatalog)
+local BrainrotToolManager = require(ReplicatedStorage.Shared.Managers.BrainrotToolManager)
 
 local spinnersFolder = workspace:WaitForChild("Spinners")
 local brainrotsRoot = ReplicatedStorage:WaitForChild("Brainrots")
+local safeZonePart = workspace:WaitForChild("World"):WaitForChild("SafeZone")
 
 local BRAINROT_LIFETIME_SECONDS = 60
 local BRAINROT_RESPAWN_DELAY_SECONDS = 30
 local BRAINROT_BILLBOARD_MAX_DISTANCE = 90
 local BRAINROT_BILLBOARD_STUDS_OFFSET = Vector3.new(0, 9, 0)
+local HELD_BRAINROT_MODEL_ATTRIBUTE = "HeldBrainrotModelName"
+local HELD_BRAINROT_RARITY_ATTRIBUTE = "HeldBrainrotRarity"
 local rng = Random.new()
 
 local activeHoldTracks: { [Player]: AnimationTrack } = {}
 local spinnerStates: { [Model]: { token: number } } = {}
 local registeredSpinnerTops: { [Model]: boolean } = {}
+local safeZoneDebounceByPlayer: { [Player]: number } = {}
 local typeAliases = {
 	Comon = "Common",
 }
@@ -78,6 +83,33 @@ local function playHoldBrainrotAnimation(player: Player)
 		holdTrack:Play()
 		activeHoldTracks[player] = holdTrack
 	end)
+end
+
+local function setHeldBrainrotState(player: Player, modelName: string?, rarity: string?)
+	if modelName == nil then
+		player:SetAttribute(HELD_BRAINROT_MODEL_ATTRIBUTE, nil)
+	else
+		player:SetAttribute(HELD_BRAINROT_MODEL_ATTRIBUTE, modelName)
+	end
+
+	if rarity == nil then
+		player:SetAttribute(HELD_BRAINROT_RARITY_ATTRIBUTE, nil)
+	else
+		player:SetAttribute(HELD_BRAINROT_RARITY_ATTRIBUTE, rarity)
+	end
+end
+
+local function clearHeldBrainrot(player: Player)
+	local character = player.Character
+	if character then
+		local overheadBrainrot = character:FindFirstChild("OverheadBrainrot")
+		if overheadBrainrot then
+			overheadBrainrot:Destroy()
+		end
+	end
+
+	stopHoldBrainrotAnimation(player)
+	setHeldBrainrotState(player, nil, nil)
 end
 
 -- local function findPromptInModel(model: Model): ProximityPrompt?
@@ -247,6 +279,8 @@ local function attachBrainrotAboveHead(player: Player, modelName: string, rarity
 	weld.Part0 = head
 	weld.Part1 = primaryPart
 	weld.Parent = primaryPart
+
+	setHeldBrainrotState(player, modelName, rarity)
 end
 
 local function getSpinnerState(spinnerTop: Model): { token: number }
@@ -483,6 +517,53 @@ spinnersFolder.ChildAdded:Connect(function(child)
 	end
 end)
 
+safeZonePart.Touched:Connect(function(hit: BasePart)
+	local character = hit:FindFirstAncestorOfClass("Model")
+	if not character then
+		return
+	end
+
+	local player = Players:GetPlayerFromCharacter(character)
+	if not player then
+		return
+	end
+
+	local modelName = player:GetAttribute(HELD_BRAINROT_MODEL_ATTRIBUTE)
+	local rarity = player:GetAttribute(HELD_BRAINROT_RARITY_ATTRIBUTE)
+	if typeof(modelName) ~= "string" or typeof(rarity) ~= "string" then
+		return
+	end
+
+	local now = os.clock()
+	local lastTouch = safeZoneDebounceByPlayer[player]
+	if lastTouch and (now - lastTouch) < 0.2 then
+		return
+	end
+	safeZoneDebounceByPlayer[player] = now
+
+	BrainrotToolManager.AssertToolTemplate(rarity, modelName)
+	local updatedCount = BrainrotToolManager.AddOwnedTool(player, rarity, modelName, true)
+	if updatedCount <= 0 then
+		return
+	end
+
+	clearHeldBrainrot(player)
+end)
+
+Players.PlayerAdded:Connect(function(player)
+	player.CharacterAdded:Connect(function()
+		clearHeldBrainrot(player)
+	end)
+end)
+
+for _, player in Players:GetPlayers() do
+	player.CharacterAdded:Connect(function()
+		clearHeldBrainrot(player)
+	end)
+end
+
 Players.PlayerRemoving:Connect(function(player)
+	safeZoneDebounceByPlayer[player] = nil
 	stopHoldBrainrotAnimation(player)
+	setHeldBrainrotState(player, nil, nil)
 end)
