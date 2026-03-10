@@ -1,4 +1,5 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local RunService = game:GetService("RunService")
 
 local spinnerTemplatesFolder = ReplicatedStorage:WaitForChild("Templates"):WaitForChild("Spinners")
 local defaultSpinnerTemplateName = "SpinnerTemplate_1"
@@ -9,6 +10,8 @@ local fixedRotation = CFrame.Angles(0, 0, math.rad(90))
 local spinnerFolder = Instance.new("Folder")
 spinnerFolder.Name = "Spinners"
 spinnerFolder.Parent = workspace
+
+local activeSpinners = {}
 
 local function isValidSpinnerTemplate(template: Instance?): boolean
 	if not template or not template:IsA("Model") then
@@ -22,10 +25,6 @@ local function isValidSpinnerTemplate(template: Instance?): boolean
 
 	local trunk = asModel:FindFirstChild("SpinnerTrunk")
 	if not trunk or not trunk:IsA("BasePart") then
-		return false
-	end
-
-	if not asModel:FindFirstChildWhichIsA("HingeConstraint", true) then
 		return false
 	end
 
@@ -123,19 +122,27 @@ for attachmentIndex, spinnerAttachment in ipairs(spinnerAttachments) do
 			or BrickColor.new("Bright red").Color
 		spinnerClone:PivotTo(CFrame.new(currentPosition) * fixedRotation)
 
+		local branch = spinnerClone:FindFirstChild("SpinnerBranch")
+		local branchOffset: CFrame? = nil
+		if branch and branch:IsA("BasePart") then
+			branchOffset = trunk.CFrame:ToObjectSpace(branch.CFrame)
+			branch.Anchored = true
+		end
+
+		trunk.Anchored = true
+
 		spinnerClone.Parent = spinnerFolder
 
 		currentPosition = currentPosition + Vector3.new(0, trunk.Size.X, 0)
 
-		local hinge = spinnerClone:FindFirstChildWhichIsA("HingeConstraint", true)
-		if not hinge then
-			warn(`[SpinnerInit] {spinnerClone.Name} is missing a HingeConstraint`)
-			continue
-		end
-
-		hinge.ActuatorType = Enum.ActuatorType.Motor
-		hinge.AngularVelocity = math.rad(signedSpeed)
-		hinge.MotorMaxTorque = 50000
+		table.insert(activeSpinners, {
+			trunk = trunk,
+			branch = if branch and branch:IsA("BasePart") then branch else nil,
+			branchOffset = branchOffset,
+			position = trunk.Position,
+			angle = 0,
+			speed = math.rad(signedSpeed),
+		})
 
 		if i == stacks then
 			if attachmentIndex == 1 then
@@ -150,3 +157,14 @@ for attachmentIndex, spinnerAttachment in ipairs(spinnerAttachments) do
 		end
 	end
 end
+
+RunService.Heartbeat:Connect(function(dt: number)
+	for _, spinner in activeSpinners do
+		spinner.angle += spinner.speed * dt
+		local newCF = CFrame.new(spinner.position) * CFrame.Angles(0, spinner.angle, 0) * fixedRotation
+		spinner.trunk.CFrame = newCF
+		if spinner.branch and spinner.branchOffset then
+			spinner.branch.CFrame = newCF * spinner.branchOffset
+		end
+	end
+end)
