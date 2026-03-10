@@ -166,5 +166,11 @@ RunService.Heartbeat:Connect(function(dt: number)
 		if spinner.branch and spinner.branchOffset then
 			spinner.branch.CFrame = newCF * spinner.branchOffset
 		end
+
+		local angVel = Vector3.new(0, spinner.speed, 0)
+		spinner.trunk.AssemblyAngularVelocity = angVel
+		if spinner.branch then
+			spinner.branch.AssemblyAngularVelocity = angVel
+		end
 	end
 end)
