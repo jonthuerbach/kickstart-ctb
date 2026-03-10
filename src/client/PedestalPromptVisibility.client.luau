@@ -23,6 +23,21 @@ local function hasEquippedBrainrotTool(): boolean
 	return false
 end
 
+local function hasAnyEquippedTool(): boolean
+	local character = localPlayer.Character
+	if not character then
+		return false
+	end
+
+	for _, child in character:GetChildren() do
+		if child:IsA("Tool") then
+			return true
+		end
+	end
+
+	return false
+end
+
 local function getOwningPlotModel(instance: Instance): Model?
 	local current: Instance? = instance
 	while current do
@@ -38,10 +53,6 @@ local function getOwningPlotModel(instance: Instance): Model?
 end
 
 local function shouldEnablePrompt(prompt: ProximityPrompt): boolean
-	if prompt:GetAttribute("IsPedestalPlacePrompt") ~= true then
-		return prompt.Enabled
-	end
-
 	local plotModel = getOwningPlotModel(prompt)
 	if not plotModel then
 		return false
@@ -52,11 +63,19 @@ local function shouldEnablePrompt(prompt: ProximityPrompt): boolean
 		return false
 	end
 
-	return hasEquippedBrainrotTool()
+	if prompt:GetAttribute("IsPedestalPlacePrompt") == true then
+		return hasEquippedBrainrotTool()
+	end
+
+	if prompt:GetAttribute("IsPedestalRemovePrompt") == true then
+		return not hasAnyEquippedTool()
+	end
+
+	return prompt.Enabled
 end
 
 local function refreshPrompt(prompt: ProximityPrompt)
-	if prompt:GetAttribute("IsPedestalPlacePrompt") ~= true then
+	if prompt:GetAttribute("IsPedestalPlacePrompt") ~= true and prompt:GetAttribute("IsPedestalRemovePrompt") ~= true then
 		return
 	end
 
@@ -65,7 +84,13 @@ end
 
 local function refreshAllPrompts()
 	for _, descendant in Workspace:GetDescendants() do
-		if descendant:IsA("ProximityPrompt") and descendant:GetAttribute("IsPedestalPlacePrompt") == true then
+		if
+			descendant:IsA("ProximityPrompt")
+			and (
+				descendant:GetAttribute("IsPedestalPlacePrompt") == true
+				or descendant:GetAttribute("IsPedestalRemovePrompt") == true
+			)
+		then
 			refreshPrompt(descendant)
 		end
 	end
@@ -109,7 +134,10 @@ local function bindCharacter(character: Model)
 end
 
 Workspace.DescendantAdded:Connect(function(descendant)
-	if descendant:IsA("ProximityPrompt") and descendant:GetAttribute("IsPedestalPlacePrompt") == true then
+	if
+		descendant:IsA("ProximityPrompt")
+		and (descendant:GetAttribute("IsPedestalPlacePrompt") == true or descendant:GetAttribute("IsPedestalRemovePrompt") == true)
+	then
 		observePrompt(descendant)
 		refreshPrompt(descendant)
 	end
@@ -130,7 +158,10 @@ else
 end
 
 for _, descendant in Workspace:GetDescendants() do
-	if descendant:IsA("ProximityPrompt") and descendant:GetAttribute("IsPedestalPlacePrompt") == true then
+	if
+		descendant:IsA("ProximityPrompt")
+		and (descendant:GetAttribute("IsPedestalPlacePrompt") == true or descendant:GetAttribute("IsPedestalRemovePrompt") == true)
+	then
 		observePrompt(descendant)
 	end
 end

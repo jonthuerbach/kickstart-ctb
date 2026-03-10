@@ -21,6 +21,7 @@ type PedestalState = {
 	ratePerSecond: number,
 	bankedMoney: number,
 	placedDisplayModel: Model?,
+	removePrompt: ProximityPrompt?,
 	collectDebounceAt: number,
 }
 
@@ -28,6 +29,7 @@ local pedestalByPrompt: { [ProximityPrompt]: PedestalState } = {}
 local pedestalByCollectButton: { [BasePart]: PedestalState } = {}
 local pedestalsByPlot: { [any]: { [string]: PedestalState } } = {}
 local allPedestalStates: { PedestalState } = {}
+local savePedestalData: (Player, PedestalState) -> ()
 
 local RATE_LOOKUP: { [string]: number } = {}
 
@@ -99,11 +101,89 @@ local function getBrainrotDisplayTemplate(rarity: string, modelName: string): Mo
 	return template :: Model
 end
 
+local function findPromptAnchorPart(model: Model): BasePart?
+	if model.PrimaryPart then
+		return model.PrimaryPart
+	end
+
+	for _, descendant in model:GetDescendants() do
+		if descendant:IsA("BasePart") then
+			return descendant
+		end
+	end
+
+	return nil
+end
+
 local function clearPlacedDisplay(state: PedestalState)
+	if state.removePrompt then
+		state.removePrompt:Destroy()
+		state.removePrompt = nil
+	end
+
 	if state.placedDisplayModel then
 		state.placedDisplayModel:Destroy()
 		state.placedDisplayModel = nil
 	end
+end
+
+local function getEquippedBrainrotTool(player: Player): Tool?
+	local character = player.Character
+	if not character then
+		return nil
+	end
+
+	for _, child in character:GetChildren() do
+		if child:IsA("Tool") and child:GetAttribute("IsBrainrotTool") == true then
+			return child
+		end
+	end
+
+	return nil
+end
+
+local function hasAnyEquippedTool(player: Player): boolean
+	local character = player.Character
+	if not character then
+		return false
+	end
+
+	for _, child in character:GetChildren() do
+		if child:IsA("Tool") then
+			return true
+		end
+	end
+
+	return false
+end
+
+local function onRemovePromptTriggered(state: PedestalState, player: Player)
+	if state.plot.ownerUserId ~= player.UserId then
+		return
+	end
+
+	if hasAnyEquippedTool(player) then
+		return
+	end
+
+	local rarity = state.placedRarity
+	local modelName = state.placedModelName
+	if not rarity or not modelName then
+		return
+	end
+
+	BrainrotToolManager.AssertToolTemplate(rarity, modelName)
+
+	local updatedCount = BrainrotToolManager.AddOwnedTool(player, rarity, modelName, true)
+	if updatedCount <= 0 then
+		return
+	end
+
+	state.placedRarity = nil
+	state.placedModelName = nil
+	state.ratePerSecond = 0
+	clearPlacedDisplay(state)
+	savePedestalData(player, state)
 end
 
 local function spawnPlacedDisplay(state: PedestalState, rarity: string, modelName: string)
@@ -126,9 +206,25 @@ local function spawnPlacedDisplay(state: PedestalState, rarity: string, modelNam
 
 	display:PivotTo(state.brainrotAttachment.WorldCFrame)
 	state.placedDisplayModel = display
+
+	local anchorPart = findPromptAnchorPart(display)
+	assert(anchorPart, `[PedestalInit] PlacedBrainrot {rarity}/{modelName} has no BasePart for remove prompt`)
+
+	local removePrompt = Instance.new("ProximityPrompt")
+	removePrompt.ActionText = "Remove"
+	removePrompt.ObjectText = modelName
+	removePrompt.HoldDuration = 0
+	removePrompt.RequiresLineOfSight = false
+	removePrompt:SetAttribute("IsPedestalRemovePrompt", true)
+	removePrompt.Parent = anchorPart
+	removePrompt.Triggered:Connect(function(player: Player)
+		onRemovePromptTriggered(state, player)
+	end)
+
+	state.removePrompt = removePrompt
 end
 
-local function savePedestalData(player: Player, state: PedestalState)
+savePedestalData = function(player: Player, state: PedestalState)
 	DataManager.SetPedestalData(player, state.pedestalId, {
 		rarity = state.placedRarity,
 		modelName = state.placedModelName,
@@ -179,21 +275,6 @@ local function applyPedestalData(state: PedestalState, data: any)
 	end
 
 	updateMoneyLabel(state)
-end
-
-local function getEquippedBrainrotTool(player: Player): Tool?
-	local character = player.Character
-	if not character then
-		return nil
-	end
-
-	for _, child in character:GetChildren() do
-		if child:IsA("Tool") and child:GetAttribute("IsBrainrotTool") == true then
-			return child
-		end
-	end
-
-	return nil
 end
 
 local function onPlacePromptTriggered(state: PedestalState, player: Player)
@@ -283,10 +364,19 @@ local function buildPedestalState(plot: any, pedestalId: string, pedestalModel: 
 	local surfaceGui = collectButton:WaitForChild("SurfaceGui")
 	local moneyLabel = surfaceGui:WaitForChild("MoneyLabel")
 
-	assert(placePrompt:IsA("ProximityPrompt"), `[PedestalInit] {pedestalModel.Name} PlaceAttachment.ProximityPrompt is invalid`)
-	assert(brainrotAttachment:IsA("Attachment"), `[PedestalInit] {pedestalModel.Name} PedestalTop.BrainrotAttachment is invalid`)
+	assert(
+		placePrompt:IsA("ProximityPrompt"),
+		`[PedestalInit] {pedestalModel.Name} PlaceAttachment.ProximityPrompt is invalid`
+	)
+	assert(
+		brainrotAttachment:IsA("Attachment"),
+		`[PedestalInit] {pedestalModel.Name} PedestalTop.BrainrotAttachment is invalid`
+	)
 	assert(collectButton:IsA("BasePart"), `[PedestalInit] {pedestalModel.Name} Button.CollectButton must be a BasePart`)
-	assert(moneyLabel:IsA("TextLabel"), `[PedestalInit] {pedestalModel.Name} CollectButton.SurfaceGui.MoneyLabel must be a TextLabel`)
+	assert(
+		moneyLabel:IsA("TextLabel"),
+		`[PedestalInit] {pedestalModel.Name} CollectButton.SurfaceGui.MoneyLabel must be a TextLabel`
+	)
 
 	local state: PedestalState = {
 		plot = plot,
@@ -301,6 +391,7 @@ local function buildPedestalState(plot: any, pedestalId: string, pedestalModel: 
 		ratePerSecond = 0,
 		bankedMoney = 0,
 		placedDisplayModel = nil,
+		removePrompt = nil,
 		collectDebounceAt = 0,
 	}
 
