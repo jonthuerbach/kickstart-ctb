@@ -80,20 +80,20 @@ local function playHoldBrainrotAnimation(player: Player)
 	end)
 end
 
-local function findPromptInModel(model: Model): ProximityPrompt?
-	local directPrompt = model:FindFirstChildOfClass("ProximityPrompt")
-	if directPrompt then
-		return directPrompt
-	end
+-- local function findPromptInModel(model: Model): ProximityPrompt?
+-- 	local directPrompt = model:FindFirstChildOfClass("ProximityPrompt")
+-- 	if directPrompt then
+-- 		return directPrompt
+-- 	end
 
-	for _, descendant in model:GetDescendants() do
-		if descendant:IsA("ProximityPrompt") then
-			return descendant
-		end
-	end
+-- 	for _, descendant in model:GetDescendants() do
+-- 		if descendant:IsA("ProximityPrompt") then
+-- 			return descendant
+-- 		end
+-- 	end
 
-	return nil
-end
+-- 	return nil
+-- end
 
 local function findBillboardAnchorPart(model: Model): BasePart?
 	local root = model:FindFirstChild("RootPart")
@@ -394,7 +394,13 @@ local function spawnBrainrotForSpinnerTop(spinnerTop: Model)
 
 	local spawnToken = incrementSpinnerToken(spinnerTop)
 
-	local prompt = findPromptInModel(brainrot)
+	local prompt = Instance.new("ProximityPrompt")
+	prompt.ActionText = "Pick up"
+	prompt.ObjectText = selected.name
+	prompt.HoldDuration = 2
+	prompt.RequiresLineOfSight = false
+	prompt.Parent = brainrot
+
 	if not prompt then
 		warn(`[BrainrotInit] Spawned brainrot {selected.modelName} has no ProximityPrompt`)
 	else
