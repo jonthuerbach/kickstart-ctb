@@ -12,6 +12,7 @@ export type Plot = typeof(setmetatable(
 		claimedAt: number?,
 		_model: Model,
 		_badgeGui: BillboardGui?,
+		_playerSpawnAttachment: Attachment,
 	},
 	Plot
 ))
@@ -26,6 +27,13 @@ function Plot.new(plotId: string, attachment: Attachment, parent: Instance?): Pl
 	model:PivotTo(attachment.WorldCFrame)
 	model.Parent = parent or workspace
 
+	local playerSpawn = model:WaitForChild("PlayerSpawn")
+	local playerSpawnAttachment = playerSpawn:WaitForChild("Attachment")
+	assert(
+		playerSpawnAttachment:IsA("Attachment"),
+		`[Plot] PlotTemplate.PlayerSpawn.Attachment must be an Attachment for plot {plotId}`
+	)
+
 	local self = setmetatable({
 		plotId = plotId,
 		attachmentName = attachment.Name,
@@ -33,11 +41,16 @@ function Plot.new(plotId: string, attachment: Attachment, parent: Instance?): Pl
 		claimedAt = nil,
 		_model = model,
 		_badgeGui = nil,
+		_playerSpawnAttachment = playerSpawnAttachment,
 	}, Plot)
 
 	self:_setupPedestals()
 
 	return self
+end
+
+function Plot.GetSpawnCFrame(self: Plot): CFrame
+	return self._playerSpawnAttachment.WorldCFrame
 end
 
 function Plot.IsAvailable(self: Plot): boolean
