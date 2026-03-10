@@ -46,6 +46,9 @@ function Plot.new(plotId: string, attachment: Attachment, parent: Instance?): Pl
 		_pedestals = {},
 	}, Plot)
 
+	model:SetAttribute("IsPlotModel", true)
+	model:SetAttribute("OwnerUserId", nil)
+
 	self:_setupPedestals()
 
 	return self
@@ -66,12 +69,14 @@ end
 function Plot.Assign(self: Plot, player: Player)
 	self.ownerUserId = player.UserId
 	self.claimedAt = os.time()
+	self._model:SetAttribute("OwnerUserId", player.UserId)
 	self:_buildOwnerBadge(player)
 end
 
 function Plot.Unassign(self: Plot)
 	self.ownerUserId = nil
 	self.claimedAt = nil
+	self._model:SetAttribute("OwnerUserId", nil)
 
 	if self._badgeGui then
 		self._badgeGui:Destroy()

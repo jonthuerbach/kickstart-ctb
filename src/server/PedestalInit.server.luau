@@ -304,6 +304,9 @@ local function buildPedestalState(plot: any, pedestalId: string, pedestalModel: 
 		collectDebounceAt = 0,
 	}
 
+	placePrompt:SetAttribute("IsPedestalPlacePrompt", true)
+	placePrompt:SetAttribute("PedestalId", pedestalId)
+
 	placePrompt.Triggered:Connect(function(player: Player)
 		onPlacePromptTriggered(state, player)
 	end)
