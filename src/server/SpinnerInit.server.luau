@@ -25,6 +25,10 @@ local function isValidSpinnerTemplate(template: Instance?): boolean
 		return false
 	end
 
+	if not asModel:FindFirstChildWhichIsA("HingeConstraint", true) then
+		return false
+	end
+
 	return true
 end
 
@@ -104,7 +108,6 @@ for attachmentIndex, spinnerAttachment in ipairs(spinnerAttachments) do
 	for i = 1, stacks do
 		local spinnerClone = spinnerTemplate:Clone()
 		local trunk = spinnerClone:WaitForChild("SpinnerTrunk")
-		local primaryPart = spinnerClone.PrimaryPart
 
 		local randomSpeed = math.random(minSpeed, maxSpeed) -- degrees/sec
 		local directionMultiplier = (i % 2 == 1) and 1 or -1 -- bottom layer (i=1) stays current direction, then alternates
@@ -124,16 +127,15 @@ for attachmentIndex, spinnerAttachment in ipairs(spinnerAttachments) do
 
 		currentPosition = currentPosition + Vector3.new(0, trunk.Size.X, 0)
 
-		local spinAttachment = Instance.new("Attachment")
-		spinAttachment.Name = "SpinAttachment"
-		spinAttachment.Parent = primaryPart
+		local hinge = spinnerClone:FindFirstChildWhichIsA("HingeConstraint", true)
+		if not hinge then
+			warn(`[SpinnerInit] {spinnerClone.Name} is missing a HingeConstraint`)
+			continue
+		end
 
-		local angularVelocity = Instance.new("AngularVelocity")
-		angularVelocity.Attachment0 = spinAttachment
-		angularVelocity.RelativeTo = Enum.ActuatorRelativeTo.Attachment0
-		angularVelocity.AngularVelocity = Vector3.new(math.rad(signedSpeed), 0, 0)
-		angularVelocity.MaxTorque = math.huge
-		angularVelocity.Parent = primaryPart
+		hinge.ActuatorType = Enum.ActuatorType.Motor
+		hinge.AngularVelocity = math.rad(signedSpeed)
+		hinge.MotorMaxTorque = 50000
 
 		if i == stacks then
 			if attachmentIndex == 1 then
