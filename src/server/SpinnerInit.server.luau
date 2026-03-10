@@ -62,9 +62,12 @@ for attachmentIndex, spinnerAttachment in ipairs(spinnerAttachments) do
 		local primaryPart = spinnerClone.PrimaryPart
 
 		local randomSpeed = math.random(minSpeed, maxSpeed) -- degrees/sec
+		local directionMultiplier = (i % 2 == 1) and 1 or -1 -- bottom layer (i=1) stays current direction, then alternates
+		local signedSpeed = randomSpeed * directionMultiplier
 
 		spinnerClone.Name = `Spinner_{attachmentIndex}_{i}`
 		spinnerClone:SetAttribute("Speed", randomSpeed)
+		spinnerClone:SetAttribute("SignedSpeed", signedSpeed)
 		spinnerClone:SetAttribute("IsSpinnerTop", false)
 		spinnerClone.SpinnerTrunk.Color = i % 2 == 0 and Color3.fromRGB(255, 255, 255)
 			or BrickColor.new("Bright red").Color
@@ -83,7 +86,7 @@ for attachmentIndex, spinnerAttachment in ipairs(spinnerAttachments) do
 		local angularVelocity = Instance.new("AngularVelocity")
 		angularVelocity.Attachment0 = spinAttachment
 		angularVelocity.RelativeTo = Enum.ActuatorRelativeTo.Attachment0
-		angularVelocity.AngularVelocity = Vector3.new(math.rad(randomSpeed), 0, 0)
+		angularVelocity.AngularVelocity = Vector3.new(math.rad(signedSpeed), 0, 0)
 		angularVelocity.MaxTorque = math.huge
 		angularVelocity.Parent = primaryPart
 
