@@ -13,6 +13,7 @@ export type Plot = typeof(setmetatable(
 		_model: Model,
 		_badgeGui: BillboardGui?,
 		_playerSpawnAttachment: Attachment,
+		_pedestals: { [string]: Model },
 	},
 	Plot
 ))
@@ -42,6 +43,7 @@ function Plot.new(plotId: string, attachment: Attachment, parent: Instance?): Pl
 		_model = model,
 		_badgeGui = nil,
 		_playerSpawnAttachment = playerSpawnAttachment,
+		_pedestals = {},
 	}, Plot)
 
 	self:_setupPedestals()
@@ -51,6 +53,10 @@ end
 
 function Plot.GetSpawnCFrame(self: Plot): CFrame
 	return self._playerSpawnAttachment.WorldCFrame
+end
+
+function Plot.GetPedestals(self: Plot): { [string]: Model }
+	return self._pedestals
 end
 
 function Plot.IsAvailable(self: Plot): boolean
@@ -212,6 +218,7 @@ function Plot._setupPedestals(self: Plot)
 		pedestalClone.Name = child.Name:gsub("Attachment", "")
 		pedestalClone.Parent = self._model
 		pedestalClone:PivotTo(child.WorldCFrame)
+		self._pedestals[pedestalClone.Name] = pedestalClone
 	end
 end
 

@@ -102,4 +102,8 @@ function PlotManager.GetPlot(plotId: string): Plot.Plot?
 	return _plots[plotId]
 end
 
+function PlotManager.GetAllPlots(): { [string]: Plot.Plot }
+	return _plots
+end
+
 return PlotManager

@@ -2,6 +2,7 @@ return {
 	Money = 0,
 
 	BrainrotTools = {},
+	Pedestals = {},
 
 	GamePasses = {
 		["1502122570"] = { owned = false, awarded = false },

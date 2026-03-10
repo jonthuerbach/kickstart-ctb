@@ -33,6 +33,24 @@ local function removeTaggedTools(parent: Instance?)
 	end
 end
 
+local function removeOneMatchingTaggedTool(parent: Instance?, rarity: string, modelName: string)
+	if not parent then
+		return
+	end
+
+	for _, child in parent:GetChildren() do
+		if
+			child:IsA("Tool")
+			and child:GetAttribute(BRAINROT_TOOL_ATTRIBUTE) == true
+			and child:GetAttribute(BRAINROT_TOOL_RARITY_ATTRIBUTE) == rarity
+			and child:GetAttribute(BRAINROT_TOOL_MODEL_ATTRIBUTE) == modelName
+		then
+			child:Destroy()
+			return
+		end
+	end
+end
+
 function BrainrotToolManager.AssertToolTemplate(rarity: string, modelName: string): Tool
 	local rarityFolder = brainrotToolsRoot:FindFirstChild(rarity)
 	assert(rarityFolder, `[BrainrotToolManager] Missing tool rarity folder BrainrotTools.{rarity}`)
@@ -80,6 +98,26 @@ function BrainrotToolManager.AddOwnedTool(player: Player, rarity: string, modelN
 
 	BrainrotToolManager.GrantToolInstance(player, rarity, modelName, autoEquip)
 	return updatedCount
+end
+
+function BrainrotToolManager.ConsumeOwnedTool(player: Player, rarity: string, modelName: string): number
+	local updatedCount = DataManager.RemoveBrainrotTool(player, rarity, modelName, 1)
+	if updatedCount < 0 then
+		return updatedCount
+	end
+
+	removeOneMatchingTaggedTool(player.StarterGear, rarity, modelName)
+	return updatedCount
+end
+
+function BrainrotToolManager.GetToolMetadata(tool: Tool): (string?, string?)
+	local rarity = tool:GetAttribute(BRAINROT_TOOL_RARITY_ATTRIBUTE)
+	local modelName = tool:GetAttribute(BRAINROT_TOOL_MODEL_ATTRIBUTE)
+	if typeof(rarity) ~= "string" or typeof(modelName) ~= "string" then
+		return nil, nil
+	end
+
+	return rarity, modelName
 end
 
 function BrainrotToolManager.RestoreOwnedTools(player: Player)
