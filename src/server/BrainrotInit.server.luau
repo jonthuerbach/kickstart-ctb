@@ -112,21 +112,6 @@ local function clearHeldBrainrot(player: Player)
 	setHeldBrainrotState(player, nil, nil)
 end
 
--- local function findPromptInModel(model: Model): ProximityPrompt?
--- 	local directPrompt = model:FindFirstChildOfClass("ProximityPrompt")
--- 	if directPrompt then
--- 		return directPrompt
--- 	end
-
--- 	for _, descendant in model:GetDescendants() do
--- 		if descendant:IsA("ProximityPrompt") then
--- 			return descendant
--- 		end
--- 	end
-
--- 	return nil
--- end
-
 local function findBillboardAnchorPart(model: Model): BasePart?
 	local root = model:FindFirstChild("RootPart")
 	if root and root:IsA("BasePart") then
@@ -170,7 +155,7 @@ local function createBrainrotBillboard(brainrot: Model)
 	local billboard = Instance.new("BillboardGui")
 	billboard.Name = "BrainrotBillboard"
 	billboard.Adornee = anchorPart
-	billboard.Size = UDim2.new(16, 0, 12, 0)
+	billboard.Size = UDim2.new(16, 0, 10, 0)
 	billboard.StudsOffset = BRAINROT_BILLBOARD_STUDS_OFFSET
 	billboard.MaxDistance = BRAINROT_BILLBOARD_MAX_DISTANCE
 	billboard.AlwaysOnTop = true
@@ -209,6 +194,8 @@ local function createBrainrotBillboard(brainrot: Model)
 		return label
 	end
 
+	local despawnLabel =
+		buildLabel("DespawnCountdown", `${BRAINROT_LIFETIME_SECONDS}s`, Color3.fromRGB(255, 255, 0), 0.16)
 	buildLabel("DisplayName", displayText, Color3.fromRGB(255, 255, 255), 0.25)
 	buildLabel("Rarity", rarityText, rarityColor, 0.16)
 	buildLabel("Rate", `${rateText}/s`, Color3.fromRGB(0, 255, 0), 0.25)
@@ -216,6 +203,22 @@ local function createBrainrotBillboard(brainrot: Model)
 	if typeof(mutation) == "string" and mutation ~= "" then
 		buildLabel("Mutation", `Mutation: {mutation}`, Color3.fromRGB(255, 240, 130), 0.25)
 	end
+
+	task.spawn(function()
+		for remaining = BRAINROT_LIFETIME_SECONDS - 1, 0, -1 do
+			if not brainrot.Parent or not despawnLabel.Parent then
+				return
+			end
+
+			task.wait(1)
+
+			if not brainrot.Parent or not despawnLabel.Parent then
+				return
+			end
+
+			despawnLabel.Text = `{remaining}s`
+		end
+	end)
 end
 
 local function attachBrainrotAboveHead(player: Player, modelName: string, rarity: string)
