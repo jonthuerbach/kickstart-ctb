@@ -1,6 +1,6 @@
 local DataManager = {}
 
--- local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 DataManager.Profiles = {}
 
@@ -18,6 +18,7 @@ function DataManager.UpdateMoney(player: Player, amount: number?)
 	end
 
 	leaderstats:WaitForChild("Money").Value = profile.Data.Money
+	ReplicatedStorage.Remotes.UpdateMoney:FireClient(player, profile.Data.Money)
 end
 
 return DataManager
