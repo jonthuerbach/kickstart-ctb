@@ -19,4 +19,16 @@ function MovementConfig.GetSpeedUpgradeCost(speedLevel: number): number
 	return math.ceil(rawCost)
 end
 
+function MovementConfig.GetSpeedUpgradeBundleCost(currentSpeedLevel: number, upgradeCount: number): number
+	local normalizedLevel = math.max(0, math.floor(currentSpeedLevel))
+	local normalizedCount = math.max(1, math.floor(upgradeCount))
+	local total = 0
+
+	for i = 0, normalizedCount - 1 do
+		total += MovementConfig.GetSpeedUpgradeCost(normalizedLevel + i)
+	end
+
+	return total
+end
+
 return MovementConfig

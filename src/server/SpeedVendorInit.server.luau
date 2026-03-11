@@ -18,6 +18,11 @@ local speedVendorPrompt = Workspace:WaitForChild("World")
 assert(speedVendorPrompt:IsA("ProximityPrompt"), "[SpeedVendorInit] Expected SpeedVendor ProximityPrompt.")
 
 local purchaseInFlight: { [Player]: boolean } = {}
+local VALID_UPGRADE_COUNTS = {
+	[1] = true,
+	[5] = true,
+	[10] = true,
+}
 
 local function updateSpeedDisplay(player: Player, speedLevel: number)
 	player:SetAttribute("SpeedDisplay", speedLevel + 1)
@@ -30,16 +35,22 @@ local function getSpeedVendorState(player: Player): { [string]: any }?
 	end
 
 	local speedLevel = DataManager.GetSpeedLevel(player)
-	local nextUpgradeCost = MovementConfig.GetSpeedUpgradeCost(speedLevel)
 	local money = profile.Data.Money
-	local canAfford = typeof(money) == "number" and money >= nextUpgradeCost
+	local costX1 = MovementConfig.GetSpeedUpgradeBundleCost(speedLevel, 1)
+	local costX5 = MovementConfig.GetSpeedUpgradeBundleCost(speedLevel, 5)
+	local costX10 = MovementConfig.GetSpeedUpgradeBundleCost(speedLevel, 10)
+	local numericMoney = if typeof(money) == "number" then money else 0
 
 	return {
 		speedLevel = speedLevel,
 		displayCurrentLevel = speedLevel + 1,
 		displayNextLevel = speedLevel + 2,
-		nextUpgradeCost = nextUpgradeCost,
-		canAfford = canAfford,
+		costX1 = costX1,
+		costX5 = costX5,
+		costX10 = costX10,
+		canAffordX1 = numericMoney >= costX1,
+		canAffordX5 = numericMoney >= costX5,
+		canAffordX10 = numericMoney >= costX10,
 	}
 end
 
@@ -72,7 +83,7 @@ speedVendorPrompt.Triggered:Connect(function(player: Player)
 	sendState(player)
 end)
 
-requestSpeedUpgradeRemote.OnServerEvent:Connect(function(player: Player)
+requestSpeedUpgradeRemote.OnServerEvent:Connect(function(player: Player, requestedCount: number?)
 	if purchaseInFlight[player] then
 		return
 	end
@@ -84,18 +95,25 @@ requestSpeedUpgradeRemote.OnServerEvent:Connect(function(player: Player)
 		return
 	end
 
-	local speedLevel = DataManager.GetSpeedLevel(player)
-	local nextUpgradeCost = MovementConfig.GetSpeedUpgradeCost(speedLevel)
-	local money = profile.Data.Money
-
-	if typeof(money) ~= "number" or money < nextUpgradeCost then
+	local upgradeCount = if typeof(requestedCount) == "number" then math.floor(requestedCount) else 1
+	if not VALID_UPGRADE_COUNTS[upgradeCount] then
 		sendState(player)
 		purchaseInFlight[player] = nil
 		return
 	end
 
-	DataManager.UpdateMoney(player, -nextUpgradeCost)
-	local upgradedSpeedLevel = speedLevel + 1
+	local speedLevel = DataManager.GetSpeedLevel(player)
+	local totalUpgradeCost = MovementConfig.GetSpeedUpgradeBundleCost(speedLevel, upgradeCount)
+	local money = profile.Data.Money
+
+	if typeof(money) ~= "number" or money < totalUpgradeCost then
+		sendState(player)
+		purchaseInFlight[player] = nil
+		return
+	end
+
+	DataManager.UpdateMoney(player, -totalUpgradeCost)
+	local upgradedSpeedLevel = speedLevel + upgradeCount
 	DataManager.SetSpeedLevel(player, upgradedSpeedLevel)
 	updateSpeedDisplay(player, upgradedSpeedLevel)
 	applyCurrentSpeedToCharacter(player)
