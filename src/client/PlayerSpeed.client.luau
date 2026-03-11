@@ -8,14 +8,20 @@ local playerSpeed = playerInfo:WaitForChild("PlayerSpeed")
 
 assert(playerSpeed:IsA("TextLabel"), "[PlayerSpeed] MainGui.PlayerInfo.PlayerSpeed must be a TextLabel")
 
-local leaderstats = player:WaitForChild("leaderstats")
-local speedValue = leaderstats:WaitForChild("Speed") :: NumberValue
-
 local function setSpeedText(value: number)
 	playerSpeed.Text = `Speed: {math.floor(value)}`
 end
 
-setSpeedText(speedValue.Value)
-speedValue:GetPropertyChangedSignal("Value"):Connect(function()
-	setSpeedText(speedValue.Value)
+local function refreshFromAttribute()
+	local speedDisplay = player:GetAttribute("SpeedDisplay")
+	if typeof(speedDisplay) ~= "number" then
+		return
+	end
+
+	setSpeedText(speedDisplay)
+end
+
+refreshFromAttribute()
+player:GetAttributeChangedSignal("SpeedDisplay"):Connect(function()
+	refreshFromAttribute()
 end)

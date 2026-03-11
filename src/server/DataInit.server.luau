@@ -26,9 +26,7 @@ local function Initialize(player: Player, profile: typeof(PlayerStore:StartSessi
 	Money.Name = "Money"
 	Money.Value = profile.Data.Money
 
-	local Speed = Instance.new("NumberValue", leaderstats)
-	Speed.Name = "Speed"
-	Speed.Value = DataManager.GetSpeedLevel(player) + 1
+	player:SetAttribute("SpeedDisplay", DataManager.GetSpeedLevel(player) + 1)
 
 	-- Update the UI
 	ReplicatedStorage.Remotes.UpdateMoney:FireClient(player, profile.Data.Money)
