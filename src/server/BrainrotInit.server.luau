@@ -10,6 +10,8 @@ local safeZonePart = workspace:WaitForChild("World"):WaitForChild("SafeZone")
 
 local BRAINROT_LIFETIME_SECONDS = 60
 local BRAINROT_RESPAWN_DELAY_SECONDS = 30
+local MYTHIC_SPAWN_INTERVAL_SECONDS = 5 * 60
+local MYTHIC_LIFETIME_SECONDS = 4 * 60
 local BRAINROT_BILLBOARD_MAX_DISTANCE = 90
 local BRAINROT_BILLBOARD_STUDS_OFFSET = Vector3.new(0, 9, 0)
 local HELD_BRAINROT_MODEL_ATTRIBUTE = "HeldBrainrotModelName"
@@ -135,7 +137,7 @@ local function getRarityColor(rarity: string): Color3
 	return rarityColors[rarity] or Color3.fromRGB(255, 255, 255)
 end
 
-local function createBrainrotBillboard(brainrot: Model)
+local function createBrainrotBillboard(brainrot: Model, lifetimeSeconds: number)
 	local anchorPart = findBillboardAnchorPart(brainrot)
 	if not anchorPart then
 		warn(`[BrainrotInit] Cannot create billboard, no anchor part found for {brainrot.Name}`)
@@ -194,8 +196,7 @@ local function createBrainrotBillboard(brainrot: Model)
 		return label
 	end
 
-	local despawnLabel =
-		buildLabel("DespawnCountdown", `${BRAINROT_LIFETIME_SECONDS}s`, Color3.fromRGB(255, 255, 0), 0.16)
+	local despawnLabel = buildLabel("DespawnCountdown", `${lifetimeSeconds}s`, Color3.fromRGB(255, 255, 0), 0.16)
 	buildLabel("DisplayName", displayText, Color3.fromRGB(255, 255, 255), 0.25)
 	buildLabel("Rarity", rarityText, rarityColor, 0.16)
 	buildLabel("Rate", `${rateText}/s`, Color3.fromRGB(0, 255, 0), 0.25)
@@ -205,7 +206,7 @@ local function createBrainrotBillboard(brainrot: Model)
 	end
 
 	task.spawn(function()
-		for remaining = BRAINROT_LIFETIME_SECONDS - 1, 0, -1 do
+		for remaining = lifetimeSeconds - 1, 0, -1 do
 			if not brainrot.Parent or not despawnLabel.Parent then
 				return
 			end
@@ -309,6 +310,24 @@ local function normalizeSpawnType(rawType: any): string?
 	return typeAliases[rawType] or rawType
 end
 
+local function isMythicSpawnType(spawnType: string?): boolean
+	return spawnType == "Mythic"
+end
+
+local function isMythicSpinnerTop(spinnerTop: Model): boolean
+	local spawnType = normalizeSpawnType(spinnerTop:GetAttribute("BrainrotType"))
+	return isMythicSpawnType(spawnType)
+end
+
+local function secondsUntilNextMythicWindow(nowEpochSeconds: number): number
+	local remainder = nowEpochSeconds % MYTHIC_SPAWN_INTERVAL_SECONDS
+	if remainder == 0 then
+		return MYTHIC_SPAWN_INTERVAL_SECONDS
+	end
+
+	return MYTHIC_SPAWN_INTERVAL_SECONDS - remainder
+end
+
 local function selectWeightedBrainrot(spawnType: string): any?
 	local category = BrainrotCatalog.Names[spawnType]
 	if typeof(category) ~= "table" then
@@ -392,6 +411,7 @@ local function spawnBrainrotForSpinnerTop(spinnerTop: Model)
 		warn(`[BrainrotInit] Spinner {spinnerTop.Name} is missing a valid BrainrotType`)
 		return
 	end
+	local isMythic = isMythicSpawnType(spawnType)
 
 	local selected = selectWeightedBrainrot(spawnType)
 	if not selected then
@@ -427,7 +447,8 @@ local function spawnBrainrotForSpinnerTop(spinnerTop: Model)
 	brainrot.Parent = spinnerTop
 
 	brainrot:PivotTo(brainrotAttachment.WorldCFrame)
-	createBrainrotBillboard(brainrot)
+	local lifetimeSeconds = if isMythic then MYTHIC_LIFETIME_SECONDS else BRAINROT_LIFETIME_SECONDS
+	createBrainrotBillboard(brainrot, lifetimeSeconds)
 
 	local spawnToken = incrementSpinnerToken(spinnerTop)
 
@@ -457,12 +478,14 @@ local function spawnBrainrotForSpinnerTop(spinnerTop: Model)
 				warn("[BrainrotInit] Picked brainrot was missing model metadata")
 			end
 
-			local respawnToken = incrementSpinnerToken(spinnerTop)
-			scheduleRespawn(spinnerTop, BRAINROT_RESPAWN_DELAY_SECONDS, respawnToken, spawnBrainrotForSpinnerTop)
+			if not isMythic then
+				local respawnToken = incrementSpinnerToken(spinnerTop)
+				scheduleRespawn(spinnerTop, BRAINROT_RESPAWN_DELAY_SECONDS, respawnToken, spawnBrainrotForSpinnerTop)
+			end
 		end)
 	end
 
-	task.delay(BRAINROT_LIFETIME_SECONDS, function()
+	task.delay(lifetimeSeconds, function()
 		if not spinnerTop.Parent then
 			return
 		end
@@ -477,9 +500,39 @@ local function spawnBrainrotForSpinnerTop(spinnerTop: Model)
 			currentBrainrot:Destroy()
 		end
 
-		local respawnToken = incrementSpinnerToken(spinnerTop)
-		scheduleRespawn(spinnerTop, BRAINROT_RESPAWN_DELAY_SECONDS, respawnToken, spawnBrainrotForSpinnerTop)
+		if not isMythic then
+			local respawnToken = incrementSpinnerToken(spinnerTop)
+			scheduleRespawn(spinnerTop, BRAINROT_RESPAWN_DELAY_SECONDS, respawnToken, spawnBrainrotForSpinnerTop)
+		end
 	end)
+end
+
+local function scheduleMythicSpawns(spinnerTop: Model)
+	local now = os.time()
+	if now % MYTHIC_SPAWN_INTERVAL_SECONDS == 0 and spinnerTop:FindFirstChild("Brainrot") == nil then
+		spawnBrainrotForSpinnerTop(spinnerTop)
+	end
+
+	local function scheduleNext()
+		if not spinnerTop.Parent then
+			return
+		end
+
+		local delaySeconds = secondsUntilNextMythicWindow(os.time())
+		task.delay(delaySeconds, function()
+			if not spinnerTop.Parent then
+				return
+			end
+
+			if spinnerTop:FindFirstChild("Brainrot") == nil then
+				spawnBrainrotForSpinnerTop(spinnerTop)
+			end
+
+			scheduleNext()
+		end)
+	end
+
+	scheduleNext()
 end
 
 local function isSpinnerTop(instance: Instance): boolean
@@ -500,7 +553,11 @@ local function registerSpinnerTop(spinnerTop: Model)
 	end
 
 	registeredSpinnerTops[spinnerTop] = true
-	spawnBrainrotForSpinnerTop(spinnerTop)
+	if isMythicSpinnerTop(spinnerTop) then
+		scheduleMythicSpawns(spinnerTop)
+	else
+		spawnBrainrotForSpinnerTop(spinnerTop)
+	end
 
 	spinnerTop.Destroying:Connect(function()
 		registeredSpinnerTops[spinnerTop] = nil

@@ -4,6 +4,7 @@ local RunService = game:GetService("RunService")
 local spinnerTemplatesFolder = ReplicatedStorage:WaitForChild("Templates"):WaitForChild("Spinners")
 local defaultSpinnerTemplateName = "SpinnerTemplate_1"
 local spinnerAttachmentsFolder = workspace:WaitForChild("World"):WaitForChild("Spinners")
+local LAST_SPINNER_BRAINROT_TYPE = "Mythic"
 
 local fixedRotation = CFrame.Angles(0, 0, math.rad(90))
 
@@ -102,6 +103,10 @@ for attachmentIndex, spinnerAttachment in ipairs(spinnerAttachments) do
 	if typeof(spawnType) ~= "string" then
 		warn(`[SpinnerInit] {spinnerAttachment.Name} is missing Type attribute`)
 		spawnType = ""
+	end
+
+	if attachmentIndex == #spinnerAttachments then
+		spawnType = LAST_SPINNER_BRAINROT_TYPE
 	end
 
 	for i = 1, stacks do
