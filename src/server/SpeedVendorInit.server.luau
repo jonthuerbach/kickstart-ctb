@@ -19,6 +19,18 @@ assert(speedVendorPrompt:IsA("ProximityPrompt"), "[SpeedVendorInit] Expected Spe
 
 local purchaseInFlight: { [Player]: boolean } = {}
 
+local function updateSpeedLeaderstat(player: Player, speedLevel: number)
+	local leaderstats = player:FindFirstChild("leaderstats")
+	if not leaderstats then
+		return
+	end
+
+	local speedValue = leaderstats:FindFirstChild("Speed")
+	if speedValue and speedValue:IsA("NumberValue") then
+		speedValue.Value = speedLevel + 1
+	end
+end
+
 local function getSpeedVendorState(player: Player): { [string]: any }?
 	local profile = DataManager.Profiles[player]
 	if not profile then
@@ -90,7 +102,9 @@ requestSpeedUpgradeRemote.OnServerEvent:Connect(function(player: Player)
 	end
 
 	DataManager.UpdateMoney(player, -nextUpgradeCost)
-	DataManager.SetSpeedLevel(player, speedLevel + 1)
+	local upgradedSpeedLevel = speedLevel + 1
+	DataManager.SetSpeedLevel(player, upgradedSpeedLevel)
+	updateSpeedLeaderstat(player, upgradedSpeedLevel)
 	applyCurrentSpeedToCharacter(player)
 	sendState(player)
 
