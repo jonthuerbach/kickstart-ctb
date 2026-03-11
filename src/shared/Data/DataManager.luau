@@ -24,6 +24,23 @@ local function ensurePedestalsRoot(profileData: { [string]: any }): { [string]: 
 	return pedestals :: { [string]: any }
 end
 
+local function ensureMovementRoot(profileData: { [string]: any }): { [string]: any }
+	local movement = profileData.Movement
+	if typeof(movement) ~= "table" then
+		movement = {}
+		profileData.Movement = movement
+	end
+
+	if typeof(movement.SpeedLevel) ~= "number" then
+		movement.SpeedLevel = 0
+	end
+	if typeof(movement.JumpLevel) ~= "number" then
+		movement.JumpLevel = 0
+	end
+
+	return movement :: { [string]: any }
+end
+
 function DataManager.UpdateMoney(player: Player, amount: number?)
 	local profile = DataManager.Profiles[player]
 	if not profile then
@@ -130,6 +147,39 @@ function DataManager.SetPedestalData(player: Player, pedestalId: string, data: a
 
 	local pedestals = ensurePedestalsRoot(profile.Data)
 	pedestals[pedestalId] = data
+end
+
+function DataManager.GetMovementData(player: Player): { [string]: any }?
+	local profile = DataManager.Profiles[player]
+	if not profile then
+		return nil
+	end
+
+	return ensureMovementRoot(profile.Data)
+end
+
+function DataManager.GetSpeedLevel(player: Player): number
+	local movement = DataManager.GetMovementData(player)
+	if not movement then
+		return 0
+	end
+
+	local speedLevel = movement.SpeedLevel
+	if typeof(speedLevel) ~= "number" then
+		return 0
+	end
+
+	return math.max(0, math.floor(speedLevel))
+end
+
+function DataManager.SetSpeedLevel(player: Player, speedLevel: number)
+	local profile = DataManager.Profiles[player]
+	if not profile then
+		return
+	end
+
+	local movement = ensureMovementRoot(profile.Data)
+	movement.SpeedLevel = math.max(0, math.floor(speedLevel))
 end
 
 return DataManager

@@ -27,3 +27,17 @@ if not lavaCountdown then
 	lavaCountdown.Name = "LavaCountdown"
 	lavaCountdown.Parent = remotes
 end
+
+local speedVendorState = remotes:FindFirstChild("SpeedVendorState")
+if not speedVendorState then
+	speedVendorState = Instance.new("RemoteEvent")
+	speedVendorState.Name = "SpeedVendorState"
+	speedVendorState.Parent = remotes
+end
+
+local requestSpeedUpgrade = remotes:FindFirstChild("RequestSpeedUpgrade")
+if not requestSpeedUpgrade then
+	requestSpeedUpgrade = Instance.new("RemoteEvent")
+	requestSpeedUpgrade.Name = "RequestSpeedUpgrade"
+	requestSpeedUpgrade.Parent = remotes
+end
