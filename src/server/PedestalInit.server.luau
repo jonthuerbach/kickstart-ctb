@@ -5,6 +5,7 @@ local PlotManager = require(ReplicatedStorage.Shared.Managers.PlotManager)
 local DataManager = require(ReplicatedStorage.Shared.Data.DataManager)
 local BrainrotToolManager = require(ReplicatedStorage.Shared.Managers.BrainrotToolManager)
 local BrainrotCatalog = require(ReplicatedStorage.Shared.Catalogs.BrainrotCatalog)
+local NumberFormatter = require(ReplicatedStorage.Shared.Utils.NumberFormatter)
 
 local brainrotsRoot = ReplicatedStorage:WaitForChild("Brainrots")
 
@@ -52,32 +53,8 @@ local function buildRateLookup()
 	end
 end
 
-local function trimTrailingZeroes(value: string): string
-	value = value:gsub("(%..-)0+$", "%1")
-	value = value:gsub("%.$", "")
-	return value
-end
-
 local function formatMoney(amount: number): string
-	local suffixes = { "", "K", "M", "B", "T", "Qa", "Qi" }
-	local sign = amount < 0 and "-" or ""
-	local value = math.abs(amount)
-	local suffixIndex = 1
-
-	while value >= 1000 and suffixIndex < #suffixes do
-		value /= 1000
-		suffixIndex += 1
-	end
-
-	if suffixIndex == 1 then
-		local whole = math.floor(value)
-		if value == whole then
-			return sign .. "$" .. tostring(whole)
-		end
-		return sign .. "$" .. trimTrailingZeroes(string.format("%.2f", value))
-	end
-
-	return sign .. "$" .. trimTrailingZeroes(string.format("%.2f", value)) .. suffixes[suffixIndex]
+	return NumberFormatter.FormatMoney(amount)
 end
 
 local function updateMoneyLabel(state: PedestalState)

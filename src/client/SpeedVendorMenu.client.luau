@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local NumberFormatter = require(ReplicatedStorage.Shared.Utils.NumberFormatter)
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -34,7 +35,7 @@ local function setUpgradePairText(displayCurrentLevel: number, displayNextLevel:
 end
 
 local function formatCost(cost: number): string
-	return "$" .. tostring(math.floor(cost))
+	return NumberFormatter.FormatMoney(cost)
 end
 
 local function applyState(state: { [string]: any })

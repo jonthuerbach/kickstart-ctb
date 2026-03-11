@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
+local NumberFormatter = require(ReplicatedStorage.Shared.Utils.NumberFormatter)
 local updateMoneyRemote = ReplicatedStorage:WaitForChild("Remotes"):WaitForChild("UpdateMoney") :: RemoteEvent
 
 local player = Players.LocalPlayer
@@ -13,7 +14,7 @@ local leaderstats = player:WaitForChild("leaderstats")
 local moneyValue = leaderstats:WaitForChild("Money") :: NumberValue
 
 local function setMoneyText(value: number)
-	playerMoney.Text = tostring("$" .. math.floor(value))
+	playerMoney.Text = NumberFormatter.FormatMoney(value)
 end
 
 updateMoneyRemote.OnClientEvent:Connect(function(money: number)
