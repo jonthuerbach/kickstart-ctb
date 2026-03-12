@@ -2,6 +2,9 @@ local MovementConfig = {}
 
 MovementConfig.BASE_WALK_SPEED = 16
 MovementConfig.BASE_JUMP_POWER = 50
+MovementConfig.REBIRTH_JUMP_POWER_INCREMENT = 20
+MovementConfig.REBIRTH_BASE_REQUIRED_SPEED = 20
+MovementConfig.REBIRTH_REQUIRED_SPEED_MULTIPLIER = 1.5
 
 MovementConfig.SPEED_UPGRADE_INCREMENT = 1
 MovementConfig.SPEED_UPGRADE_BASE_PRICE = 50
@@ -29,6 +32,18 @@ function MovementConfig.GetSpeedUpgradeBundleCost(currentSpeedLevel: number, upg
 	end
 
 	return total
+end
+
+function MovementConfig.GetJumpPowerForRebirthCount(rebirthCount: number): number
+	local normalizedCount = math.max(0, math.floor(rebirthCount))
+	return MovementConfig.BASE_JUMP_POWER + (normalizedCount * MovementConfig.REBIRTH_JUMP_POWER_INCREMENT)
+end
+
+function MovementConfig.GetRequiredDisplayedSpeedForRebirthCount(rebirthCount: number): number
+	local normalizedCount = math.max(0, math.floor(rebirthCount))
+	local rawRequired = MovementConfig.REBIRTH_BASE_REQUIRED_SPEED
+		* (MovementConfig.REBIRTH_REQUIRED_SPEED_MULTIPLIER ^ normalizedCount)
+	return math.ceil(rawRequired)
 end
 
 return MovementConfig

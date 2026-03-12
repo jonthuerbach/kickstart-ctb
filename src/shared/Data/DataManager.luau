@@ -182,4 +182,28 @@ function DataManager.SetSpeedLevel(player: Player, speedLevel: number)
 	movement.SpeedLevel = math.max(0, math.floor(speedLevel))
 end
 
+function DataManager.GetJumpLevel(player: Player): number
+	local movement = DataManager.GetMovementData(player)
+	if not movement then
+		return 0
+	end
+
+	local jumpLevel = movement.JumpLevel
+	if typeof(jumpLevel) ~= "number" then
+		return 0
+	end
+
+	return math.max(0, math.floor(jumpLevel))
+end
+
+function DataManager.SetJumpLevel(player: Player, jumpLevel: number)
+	local profile = DataManager.Profiles[player]
+	if not profile then
+		return
+	end
+
+	local movement = ensureMovementRoot(profile.Data)
+	movement.JumpLevel = math.max(0, math.floor(jumpLevel))
+end
+
 return DataManager

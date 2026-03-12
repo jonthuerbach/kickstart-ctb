@@ -41,3 +41,24 @@ if not requestSpeedUpgrade then
 	requestSpeedUpgrade.Name = "RequestSpeedUpgrade"
 	requestSpeedUpgrade.Parent = remotes
 end
+
+local requestRebirth = remotes:FindFirstChild("RequestRebirth")
+if not requestRebirth then
+	requestRebirth = Instance.new("RemoteEvent")
+	requestRebirth.Name = "RequestRebirth"
+	requestRebirth.Parent = remotes
+end
+
+local requestRebirthState = remotes:FindFirstChild("RequestRebirthState")
+if not requestRebirthState then
+	requestRebirthState = Instance.new("RemoteEvent")
+	requestRebirthState.Name = "RequestRebirthState"
+	requestRebirthState.Parent = remotes
+end
+
+local rebirthState = remotes:FindFirstChild("RebirthState")
+if not rebirthState then
+	rebirthState = Instance.new("RemoteEvent")
+	rebirthState.Name = "RebirthState"
+	rebirthState.Parent = remotes
+end

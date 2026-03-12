@@ -4,16 +4,16 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local DataManager = require(ReplicatedStorage.Shared.Data.DataManager)
 local MovementConfig = require(ReplicatedStorage.Shared.Configs.MovementConfig)
 
-local function waitForSpeedLevel(player: Player, timeoutSeconds: number): number
+local function waitForMovementData(player: Player, timeoutSeconds: number): (number, number)
 	local deadline = os.clock() + timeoutSeconds
 	while player.Parent == Players and os.clock() < deadline do
 		if DataManager.Profiles[player] then
-			return DataManager.GetSpeedLevel(player)
+			return DataManager.GetSpeedLevel(player), DataManager.GetJumpLevel(player)
 		end
 		task.wait(0.1)
 	end
 
-	return 0
+	return 0, 0
 end
 
 local function applyPlayerDefaults(player: Player, character: Model)
@@ -22,10 +22,10 @@ local function applyPlayerDefaults(player: Player, character: Model)
 		return
 	end
 
-	local speedLevel = waitForSpeedLevel(player, 15)
+	local speedLevel, rebirthCount = waitForMovementData(player, 15)
 
 	humanoid.UseJumpPower = true
-	humanoid.JumpPower = MovementConfig.BASE_JUMP_POWER
+	humanoid.JumpPower = MovementConfig.GetJumpPowerForRebirthCount(rebirthCount)
 	humanoid.WalkSpeed = MovementConfig.GetWalkSpeedForLevel(speedLevel)
 end
 
