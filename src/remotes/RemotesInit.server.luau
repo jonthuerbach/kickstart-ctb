@@ -62,3 +62,31 @@ if not rebirthState then
 	rebirthState.Name = "RebirthState"
 	rebirthState.Parent = remotes
 end
+
+local toggleSellVendorMenu = remotes:FindFirstChild("ToggleSellVendorMenu")
+if not toggleSellVendorMenu then
+	toggleSellVendorMenu = Instance.new("RemoteEvent")
+	toggleSellVendorMenu.Name = "ToggleSellVendorMenu"
+	toggleSellVendorMenu.Parent = remotes
+end
+
+local sellBrainrotAction = remotes:FindFirstChild("SellBrainrotAction")
+if not sellBrainrotAction then
+	sellBrainrotAction = Instance.new("RemoteEvent")
+	sellBrainrotAction.Name = "SellBrainrotAction"
+	sellBrainrotAction.Parent = remotes
+end
+
+local updateConfirmSellBrainrotActionText = remotes:FindFirstChild("UpdateConfirmSellBrainrotActionText")
+if not updateConfirmSellBrainrotActionText then
+	updateConfirmSellBrainrotActionText = Instance.new("RemoteEvent")
+	updateConfirmSellBrainrotActionText.Name = "UpdateConfirmSellBrainrotActionText"
+	updateConfirmSellBrainrotActionText.Parent = remotes
+end
+
+local confirmSellBrainrotAction = remotes:FindFirstChild("ConfirmSellBrainrotAction")
+if not confirmSellBrainrotAction then
+	confirmSellBrainrotAction = Instance.new("RemoteEvent")
+	confirmSellBrainrotAction.Name = "ConfirmSellBrainrotAction"
+	confirmSellBrainrotAction.Parent = remotes
+end
