@@ -26,6 +26,10 @@ local function Initialize(player: Player, profile: typeof(PlayerStore:StartSessi
 	Money.Name = "Money"
 	Money.Value = profile.Data.Money
 
+	local Rebirths = Instance.new("NumberValue", leaderstats)
+	Rebirths.Name = "Rebirths"
+	Rebirths.Value = DataManager.GetJumpLevel(player)
+
 	player:SetAttribute("SpeedDisplay", DataManager.GetSpeedLevel(player) + 1)
 
 	-- Update the UI

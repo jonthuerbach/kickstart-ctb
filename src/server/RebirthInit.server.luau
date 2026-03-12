@@ -15,6 +15,18 @@ local function getDisplayedSpeed(player: Player): number
 	return DataManager.GetSpeedLevel(player) + 1
 end
 
+local function updateRebirthLeaderstat(player: Player, rebirthCount: number)
+	local leaderstats = player:FindFirstChild("leaderstats")
+	if not leaderstats then
+		return
+	end
+
+	local rebirthsValue = leaderstats:FindFirstChild("Rebirths")
+	if rebirthsValue and rebirthsValue:IsA("NumberValue") then
+		rebirthsValue.Value = math.max(0, math.floor(rebirthCount))
+	end
+end
+
 local function applyMovementToCharacter(player: Player)
 	local character = player.Character
 	if not character then
@@ -56,6 +68,7 @@ local function sendRebirthState(player: Player)
 		return
 	end
 
+	updateRebirthLeaderstat(player, state.rebirthCount)
 	player:SetAttribute("SpeedDisplay", state.displayedSpeed)
 	rebirthStateRemote:FireClient(player, state)
 end
@@ -85,6 +98,10 @@ requestRebirthRemote.OnServerEvent:Connect(function(player: Player)
 	local nextRebirthCount = state.rebirthCount + 1
 	DataManager.SetJumpLevel(player, nextRebirthCount)
 	DataManager.SetSpeedLevel(player, 0)
+	local profile = DataManager.Profiles[player]
+	if profile and typeof(profile.Data.Money) == "number" and profile.Data.Money > 0 then
+		DataManager.UpdateMoney(player, -profile.Data.Money)
+	end
 	applyMovementToCharacter(player)
 	sendRebirthState(player)
 

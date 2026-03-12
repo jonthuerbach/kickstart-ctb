@@ -41,6 +41,19 @@ local function ensureMovementRoot(profileData: { [string]: any }): { [string]: a
 	return movement :: { [string]: any }
 end
 
+local function pushMoneyToClient(player: Player, money: number)
+	local leaderstats = player:WaitForChild("leaderstats")
+	if not leaderstats then
+		return
+	end
+
+	local moneyValue = leaderstats:WaitForChild("Money")
+	if moneyValue and moneyValue:IsA("NumberValue") then
+		moneyValue.Value = money
+	end
+	ReplicatedStorage.Remotes.UpdateMoney:FireClient(player, money)
+end
+
 function DataManager.UpdateMoney(player: Player, amount: number?)
 	local profile = DataManager.Profiles[player]
 	if not profile then
@@ -48,14 +61,18 @@ function DataManager.UpdateMoney(player: Player, amount: number?)
 	end
 
 	profile.Data.Money += amount or 1
+	pushMoneyToClient(player, profile.Data.Money)
+end
 
-	local leaderstats = player:WaitForChild("leaderstats")
-	if not leaderstats then
+function DataManager.SetMoney(player: Player, money: number)
+	local profile = DataManager.Profiles[player]
+	if not profile then
 		return
 	end
 
-	leaderstats:WaitForChild("Money").Value = profile.Data.Money
-	ReplicatedStorage.Remotes.UpdateMoney:FireClient(player, profile.Data.Money)
+	local normalizedMoney = math.max(0, money)
+	profile.Data.Money = normalizedMoney
+	pushMoneyToClient(player, normalizedMoney)
 end
 
 function DataManager.AddBrainrotTool(player: Player, rarity: string, modelName: string, amount: number?): number
