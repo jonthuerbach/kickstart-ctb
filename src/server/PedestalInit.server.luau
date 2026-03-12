@@ -71,7 +71,17 @@ local function formatMoney(amount: number): string
 end
 
 local function updateMoneyLabel(state: PedestalState)
-	state.moneyLabel.Text = formatMoney(state.bankedMoney)
+	local isOccupied = state.placedRarity ~= nil and state.placedModelName ~= nil
+	local bankedMoney = math.max(0, state.bankedMoney)
+
+	-- Only hide text when the pedestal is empty and there is no banked payout.
+	local displayText = if not isOccupied and bankedMoney <= 0 then "" else formatMoney(bankedMoney)
+	state.moneyLabel.Text = displayText
+
+	-- Mirror state for client-side display enforcement.
+	state.collectButton:SetAttribute("IsPedestalCollectButton", true)
+	state.collectButton:SetAttribute("PedestalOccupied", isOccupied)
+	state.collectButton:SetAttribute("PedestalBankedMoney", bankedMoney)
 end
 
 local function getRatePerSecond(rarity: string, modelName: string): number
@@ -179,6 +189,7 @@ local function onRemovePromptTriggered(state: PedestalState, player: Player)
 	state.placedModelName = nil
 	state.ratePerSecond = 0
 	clearPlacedDisplay(state)
+	updateMoneyLabel(state)
 	savePedestalData(player, state)
 end
 
@@ -323,6 +334,7 @@ local function onPlacePromptTriggered(state: PedestalState, player: Player)
 	state.placedModelName = placingModelName
 	state.ratePerSecond = placingRate
 	spawnPlacedDisplay(state, placingRarity, placingModelName)
+	updateMoneyLabel(state)
 
 	savePedestalData(player, state)
 end
