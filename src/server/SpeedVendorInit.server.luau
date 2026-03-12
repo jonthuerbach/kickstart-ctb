@@ -9,11 +9,12 @@ local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local speedVendorStateRemote = remotes:WaitForChild("SpeedVendorState") :: RemoteEvent
 local requestSpeedUpgradeRemote = remotes:WaitForChild("RequestSpeedUpgrade") :: RemoteEvent
 
-local speedVendorPrompt = Workspace:WaitForChild("World")
-	:WaitForChild("Vendors")
-	:WaitForChild("SpeedVendorBooth")
-	:WaitForChild("SpeedVendor")
-	:WaitForChild("ProximityPrompt")
+local speedVendor =
+	Workspace:WaitForChild("World"):WaitForChild("Vendors"):WaitForChild("SpeedVendorBooth"):WaitForChild("SpeedVendor")
+local speedVendorHumanoid = speedVendor:WaitForChild("Humanoid")
+local speedVendorPrompt = speedVendor:WaitForChild("ProximityPrompt")
+
+speedVendorHumanoid.DisplayDistanceType = Enum.HumanoidDisplayDistanceType.None
 
 assert(speedVendorPrompt:IsA("ProximityPrompt"), "[SpeedVendorInit] Expected SpeedVendor ProximityPrompt.")
 
