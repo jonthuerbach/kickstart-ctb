@@ -7,8 +7,8 @@ MovementConfig.REBIRTH_BASE_REQUIRED_SPEED = 20
 MovementConfig.REBIRTH_REQUIRED_SPEED_MULTIPLIER = 1.5
 
 MovementConfig.SPEED_UPGRADE_INCREMENT = 1
-MovementConfig.SPEED_UPGRADE_BASE_PRICE = 50
-MovementConfig.SPEED_UPGRADE_PRICE_MULTIPLIER = 1.25
+MovementConfig.SPEED_UPGRADE_BASE_PRICE = 200
+MovementConfig.SPEED_UPGRADE_PRICE_MULTIPLIER = 1.15
 
 function MovementConfig.GetWalkSpeedForLevel(level: number): number
 	local normalizedLevel = math.max(0, math.floor(level))
