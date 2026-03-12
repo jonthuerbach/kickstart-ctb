@@ -2,6 +2,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BrainrotCatalog = require(ReplicatedStorage.Shared.Catalogs.BrainrotCatalog)
+local BrainrotBillboard = require(ReplicatedStorage.Shared.Utils.BrainrotBillboard)
 local BrainrotToolManager = require(ReplicatedStorage.Shared.Managers.BrainrotToolManager)
 
 local spinnersFolder = workspace:WaitForChild("Spinners")
@@ -12,8 +13,6 @@ local BRAINROT_LIFETIME_SECONDS = 60
 local BRAINROT_RESPAWN_DELAY_SECONDS = 30
 local MYTHIC_SPAWN_INTERVAL_SECONDS = 5 * 60
 local MYTHIC_LIFETIME_SECONDS = 4 * 60
-local BRAINROT_BILLBOARD_MAX_DISTANCE = 90
-local BRAINROT_BILLBOARD_STUDS_OFFSET = Vector3.new(0, 9, 0)
 local HELD_BRAINROT_MODEL_ATTRIBUTE = "HeldBrainrotModelName"
 local HELD_BRAINROT_RARITY_ATTRIBUTE = "HeldBrainrotRarity"
 local rng = Random.new()
@@ -24,14 +23,6 @@ local registeredSpinnerTops: { [Model]: boolean } = {}
 local safeZoneDebounceByPlayer: { [Player]: number } = {}
 local typeAliases = {
 	Comon = "Common",
-}
-local rarityColors: { [string]: Color3 } = {
-	Common = Color3.fromRGB(220, 220, 220),
-	Uncommon = Color3.fromRGB(112, 219, 112),
-	Rare = Color3.fromRGB(88, 166, 255),
-	Epic = Color3.fromRGB(184, 120, 255),
-	Legendary = Color3.fromRGB(255, 190, 80),
-	Mythic = Color3.fromRGB(255, 100, 100),
 }
 
 local function stopHoldBrainrotAnimation(player: Player)
@@ -112,114 +103,6 @@ local function clearHeldBrainrot(player: Player)
 
 	stopHoldBrainrotAnimation(player)
 	setHeldBrainrotState(player, nil, nil)
-end
-
-local function findBillboardAnchorPart(model: Model): BasePart?
-	local root = model:FindFirstChild("RootPart")
-	if root and root:IsA("BasePart") then
-		return root
-	end
-
-	if model.PrimaryPart then
-		return model.PrimaryPart
-	end
-
-	for _, descendant in model:GetDescendants() do
-		if descendant:IsA("BasePart") then
-			return descendant
-		end
-	end
-
-	return nil
-end
-
-local function getRarityColor(rarity: string): Color3
-	return rarityColors[rarity] or Color3.fromRGB(255, 255, 255)
-end
-
-local function createBrainrotBillboard(brainrot: Model, lifetimeSeconds: number)
-	local anchorPart = findBillboardAnchorPart(brainrot)
-	if not anchorPart then
-		warn(`[BrainrotInit] Cannot create billboard, no anchor part found for {brainrot.Name}`)
-		return
-	end
-
-	local displayName = brainrot:GetAttribute("Name")
-	local rarity = brainrot:GetAttribute("Rarity")
-	local ratePerSecond = brainrot:GetAttribute("RatePerSecond")
-	local mutation = brainrot:GetAttribute("Mutation")
-
-	local displayText = typeof(displayName) == "string" and displayName or "Unknown"
-	local rarityText = typeof(rarity) == "string" and rarity or "Unknown"
-	local rateText = typeof(ratePerSecond) == "number" and tostring(ratePerSecond) or "?"
-	local rarityColor = getRarityColor(rarityText)
-
-	local billboard = Instance.new("BillboardGui")
-	billboard.Name = "BrainrotBillboard"
-	billboard.Adornee = anchorPart
-	billboard.Size = UDim2.new(16, 0, 10, 0)
-	billboard.StudsOffset = BRAINROT_BILLBOARD_STUDS_OFFSET
-	billboard.MaxDistance = BRAINROT_BILLBOARD_MAX_DISTANCE
-	billboard.AlwaysOnTop = true
-	billboard.Parent = brainrot
-
-	local container = Instance.new("Frame")
-	container.Name = "Container"
-	container.BackgroundTransparency = 1
-	container.Size = UDim2.fromScale(1, 1)
-	container.Parent = billboard
-
-	local layout = Instance.new("UIListLayout")
-	layout.FillDirection = Enum.FillDirection.Vertical
-	layout.HorizontalAlignment = Enum.HorizontalAlignment.Center
-	layout.VerticalAlignment = Enum.VerticalAlignment.Top
-	layout.Padding = UDim.new(0, 2)
-	layout.Parent = container
-
-	local function buildLabel(name: string, text: string, color: Color3, size: number): TextLabel
-		local label = Instance.new("TextLabel")
-		label.Name = name
-		label.BackgroundTransparency = 1
-		label.Size = UDim2.new(1, 0, size, 0)
-		label.Text = text
-		label.TextScaled = true
-		label.TextColor3 = color
-		label.Font = Enum.Font.FredokaOne
-		label.Parent = container
-
-		local stroke = Instance.new("UIStroke")
-		stroke.Color = Color3.new(0, 0, 0)
-		stroke.StrokeSizingMode = Enum.StrokeSizingMode.ScaledSize
-		stroke.Thickness = 0.02
-		stroke.Parent = label
-
-		return label
-	end
-
-	local despawnLabel = buildLabel("DespawnCountdown", `${lifetimeSeconds}s`, Color3.fromRGB(255, 255, 0), 0.16)
-	buildLabel("DisplayName", displayText, Color3.fromRGB(255, 255, 255), 0.25)
-	buildLabel("Rarity", rarityText, rarityColor, 0.16)
-	buildLabel("Rate", `${rateText}/s`, Color3.fromRGB(0, 255, 0), 0.25)
-
-	if typeof(mutation) == "string" and mutation ~= "" then
-		buildLabel("Mutation", `Mutation: {mutation}`, Color3.fromRGB(255, 240, 130), 0.25)
-	end
-
-	task.spawn(function()
-		for remaining = lifetimeSeconds - 1, 0, -1 do
-			if not brainrot.Parent or not despawnLabel.Parent then
-				return
-			end
-
-			task.wait(1)
-
-			if not brainrot.Parent or not despawnLabel.Parent then
-				return
-			end
-
-			despawnLabel.Text = `{remaining}s`
-		end
-	end)
 end
 
 local function attachBrainrotAboveHead(player: Player, modelName: string, rarity: string)
@@ -448,7 +331,11 @@ local function spawnBrainrotForSpinnerTop(spinnerTop: Model)
 
 	brainrot:PivotTo(brainrotAttachment.WorldCFrame)
 	local lifetimeSeconds = if isMythic then MYTHIC_LIFETIME_SECONDS else BRAINROT_LIFETIME_SECONDS
-	createBrainrotBillboard(brainrot, lifetimeSeconds)
+	BrainrotBillboard.CreateFromAttributes(brainrot, {
+		variant = "Spinner",
+		showDespawnCountdown = true,
+		lifetimeSeconds = lifetimeSeconds,
+	})
 
 	local spawnToken = incrementSpinnerToken(spinnerTop)
 

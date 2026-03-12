@@ -5,6 +5,7 @@ local PlotManager = require(ReplicatedStorage.Shared.Managers.PlotManager)
 local DataManager = require(ReplicatedStorage.Shared.Data.DataManager)
 local BrainrotToolManager = require(ReplicatedStorage.Shared.Managers.BrainrotToolManager)
 local BrainrotCatalog = require(ReplicatedStorage.Shared.Catalogs.BrainrotCatalog)
+local BrainrotBillboard = require(ReplicatedStorage.Shared.Utils.BrainrotBillboard)
 local NumberFormatter = require(ReplicatedStorage.Shared.Utils.NumberFormatter)
 
 local brainrotsRoot = ReplicatedStorage:WaitForChild("Brainrots")
@@ -32,9 +33,15 @@ local pedestalsByPlot: { [any]: { [string]: PedestalState } } = {}
 local allPedestalStates: { PedestalState } = {}
 local savePedestalData: (Player, PedestalState) -> ()
 
-local RATE_LOOKUP: { [string]: number } = {}
+type BrainrotCatalogMetadata = {
+	displayName: string,
+	baseRatePerSecond: number,
+	mutation: string?,
+}
 
-local function buildRateLookup()
+local METADATA_LOOKUP: { [string]: BrainrotCatalogMetadata } = {}
+
+local function buildMetadataLookup()
 	for _, entries in BrainrotCatalog.Names do
 		if typeof(entries) ~= "table" then
 			continue
@@ -47,7 +54,13 @@ local function buildRateLookup()
 				and typeof(entry.modelName) == "string"
 				and typeof(entry.ratePerSecond) == "number"
 			then
-				RATE_LOOKUP[`${entry.rarity}/{entry.modelName}`] = entry.ratePerSecond
+				local metadata: BrainrotCatalogMetadata = {
+					displayName = if typeof(entry.name) == "string" and entry.name ~= "" then entry.name else entry.modelName,
+					baseRatePerSecond = entry.ratePerSecond,
+					mutation = if typeof(entry.mutation) == "string" and entry.mutation ~= "" then entry.mutation else nil,
+				}
+
+				METADATA_LOOKUP[`${entry.rarity}/{entry.modelName}`] = metadata
 			end
 		end
 	end
@@ -62,9 +75,15 @@ local function updateMoneyLabel(state: PedestalState)
 end
 
 local function getRatePerSecond(rarity: string, modelName: string): number
-	local rate = RATE_LOOKUP[`${rarity}/{modelName}`]
-	assert(rate, `[PedestalInit] Missing ratePerSecond in BrainrotCatalog for {rarity}/{modelName}`)
-	return rate
+	local metadata = METADATA_LOOKUP[`${rarity}/{modelName}`]
+	assert(metadata, `[PedestalInit] Missing metadata in BrainrotCatalog for {rarity}/{modelName}`)
+	return metadata.baseRatePerSecond
+end
+
+local function getBrainrotCatalogMetadata(rarity: string, modelName: string): BrainrotCatalogMetadata
+	local metadata = METADATA_LOOKUP[`${rarity}/{modelName}`]
+	assert(metadata, `[PedestalInit] Missing metadata in BrainrotCatalog for {rarity}/{modelName}`)
+	return metadata
 end
 
 local function getBrainrotDisplayTemplate(rarity: string, modelName: string): Model
@@ -165,6 +184,7 @@ end
 
 local function spawnPlacedDisplay(state: PedestalState, rarity: string, modelName: string)
 	clearPlacedDisplay(state)
+	local metadata = getBrainrotCatalogMetadata(rarity, modelName)
 	local template = getBrainrotDisplayTemplate(rarity, modelName)
 	local display = template:Clone()
 	display.Name = "PlacedBrainrot"
@@ -182,6 +202,15 @@ local function spawnPlacedDisplay(state: PedestalState, rarity: string, modelNam
 	end
 
 	display:PivotTo(state.brainrotAttachment.WorldCFrame)
+	display:SetAttribute("Name", metadata.displayName)
+	display:SetAttribute("ModelName", modelName)
+	display:SetAttribute("Rarity", rarity)
+	display:SetAttribute("RatePerSecond", state.ratePerSecond)
+	display:SetAttribute("Mutation", metadata.mutation)
+	BrainrotBillboard.CreateFromAttributes(display, {
+		variant = "Pedestal",
+		showDespawnCountdown = false,
+	})
 	state.placedDisplayModel = display
 
 	local anchorPart = findPromptAnchorPart(display)
@@ -189,7 +218,7 @@ local function spawnPlacedDisplay(state: PedestalState, rarity: string, modelNam
 
 	local removePrompt = Instance.new("ProximityPrompt")
 	removePrompt.ActionText = "Remove"
-	removePrompt.ObjectText = modelName
+	removePrompt.ObjectText = metadata.displayName
 	removePrompt.HoldDuration = 0
 	removePrompt.RequiresLineOfSight = false
 	removePrompt:SetAttribute("IsPedestalRemovePrompt", true)
@@ -438,7 +467,7 @@ local function restorePedestalsForPlayer(player: Player)
 	end
 end
 
-buildRateLookup()
+buildMetadataLookup()
 initializePedestals()
 
 for _, player in Players:GetPlayers() do
