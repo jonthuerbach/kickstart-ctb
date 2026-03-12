@@ -12,7 +12,7 @@ local rebirthStateRemote = remotes:WaitForChild("RebirthState") :: RemoteEvent
 local rebirthInFlight: { [Player]: boolean } = {}
 
 local function getDisplayedSpeed(player: Player): number
-	return DataManager.GetSpeedLevel(player) + 1
+	return DataManager.GetSpeedLevel(player)
 end
 
 local function updateRebirthLeaderstat(player: Player, rebirthCount: number)

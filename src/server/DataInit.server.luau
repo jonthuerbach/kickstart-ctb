@@ -30,7 +30,7 @@ local function Initialize(player: Player, profile: typeof(PlayerStore:StartSessi
 	Rebirths.Name = "Rebirths"
 	Rebirths.Value = DataManager.GetJumpLevel(player)
 
-	player:SetAttribute("SpeedDisplay", DataManager.GetSpeedLevel(player) + 1)
+	player:SetAttribute("SpeedDisplay", DataManager.GetSpeedLevel(player))
 
 	-- Update the UI
 	ReplicatedStorage.Remotes.UpdateMoney:FireClient(player, profile.Data.Money)

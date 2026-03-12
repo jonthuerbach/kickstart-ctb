@@ -35,9 +35,9 @@ local requiredDisplayedSpeed = MovementConfig.GetRequiredDisplayedSpeedForRebirt
 local function getDisplayedSpeed(): number
 	local speedDisplay = player:GetAttribute("SpeedDisplay")
 	if typeof(speedDisplay) ~= "number" then
-		return 1
+		return 0
 	end
-	return math.max(1, math.floor(speedDisplay))
+	return math.max(0, math.floor(speedDisplay))
 end
 
 local function updateProgressUi(displayedSpeed: number, requiredSpeed: number)
@@ -63,7 +63,7 @@ local function applyRebirthState(state: { [string]: any })
 	end
 
 	requiredDisplayedSpeed = math.max(1, math.floor(serverRequiredDisplayedSpeed))
-	updateProgressUi(math.max(1, math.floor(serverDisplayedSpeed)), requiredDisplayedSpeed)
+	updateProgressUi(math.max(0, math.floor(serverDisplayedSpeed)), requiredDisplayedSpeed)
 end
 
 rebirthMenuButton.Activated:Connect(function()

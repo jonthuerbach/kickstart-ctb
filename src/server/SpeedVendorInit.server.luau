@@ -26,7 +26,7 @@ local VALID_UPGRADE_COUNTS = {
 }
 
 local function updateSpeedDisplay(player: Player, speedLevel: number)
-	player:SetAttribute("SpeedDisplay", speedLevel + 1)
+	player:SetAttribute("SpeedDisplay", speedLevel)
 end
 
 local function getSpeedVendorState(player: Player): { [string]: any }?
@@ -44,8 +44,8 @@ local function getSpeedVendorState(player: Player): { [string]: any }?
 
 	return {
 		speedLevel = speedLevel,
-		displayCurrentLevel = speedLevel + 1,
-		displayNextLevel = speedLevel + 2,
+		displayCurrentLevel = speedLevel,
+		displayNextLevel = speedLevel + 1,
 		costX1 = costX1,
 		costX5 = costX5,
 		costX10 = costX10,
