@@ -90,3 +90,31 @@ if not confirmSellBrainrotAction then
 	confirmSellBrainrotAction.Name = "ConfirmSellBrainrotAction"
 	confirmSellBrainrotAction.Parent = remotes
 end
+
+local giftOfferIncoming = remotes:FindFirstChild("GiftOfferIncoming")
+if not giftOfferIncoming then
+	giftOfferIncoming = Instance.new("RemoteEvent")
+	giftOfferIncoming.Name = "GiftOfferIncoming"
+	giftOfferIncoming.Parent = remotes
+end
+
+local giftOfferResponse = remotes:FindFirstChild("GiftOfferResponse")
+if not giftOfferResponse then
+	giftOfferResponse = Instance.new("RemoteEvent")
+	giftOfferResponse.Name = "GiftOfferResponse"
+	giftOfferResponse.Parent = remotes
+end
+
+local giftOfferClosed = remotes:FindFirstChild("GiftOfferClosed")
+if not giftOfferClosed then
+	giftOfferClosed = Instance.new("RemoteEvent")
+	giftOfferClosed.Name = "GiftOfferClosed"
+	giftOfferClosed.Parent = remotes
+end
+
+local giftStatusMessage = remotes:FindFirstChild("GiftStatusMessage")
+if not giftStatusMessage then
+	giftStatusMessage = Instance.new("RemoteEvent")
+	giftStatusMessage.Name = "GiftStatusMessage"
+	giftStatusMessage.Parent = remotes
+end
