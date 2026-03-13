@@ -12,13 +12,15 @@ end
 local function computeDisplayText(button: BasePart): string?
 	local occupied = button:GetAttribute("PedestalOccupied")
 	local bankedMoney = button:GetAttribute("PedestalBankedMoney")
+	local suppressUnoccupiedMoney = button:GetAttribute("PedestalSuppressUnoccupiedMoney")
 
 	if typeof(occupied) ~= "boolean" or typeof(bankedMoney) ~= "number" then
 		return nil
 	end
 
+	local shouldSuppressUnoccupied = suppressUnoccupiedMoney == true
 	local normalizedMoney = math.max(0, bankedMoney)
-	if not occupied and normalizedMoney <= 0 then
+	if not occupied and (normalizedMoney <= 0 or shouldSuppressUnoccupied) then
 		return ""
 	end
 
@@ -50,6 +52,9 @@ local function observeButton(button: BasePart)
 		updateLabelFromButton(button)
 	end)
 	button:GetAttributeChangedSignal("PedestalBankedMoney"):Connect(function()
+		updateLabelFromButton(button)
+	end)
+	button:GetAttributeChangedSignal("PedestalSuppressUnoccupiedMoney"):Connect(function()
 		updateLabelFromButton(button)
 	end)
 

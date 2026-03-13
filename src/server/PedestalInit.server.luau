@@ -25,6 +25,7 @@ type PedestalState = {
 	placedDisplayModel: Model?,
 	removePrompt: ProximityPrompt?,
 	collectDebounceAt: number,
+	suppressUnoccupiedMoneyDisplay: boolean,
 }
 
 local pedestalByPrompt: { [ProximityPrompt]: PedestalState } = {}
@@ -32,6 +33,8 @@ local pedestalByCollectButton: { [BasePart]: PedestalState } = {}
 local pedestalsByPlot: { [any]: { [string]: PedestalState } } = {}
 local allPedestalStates: { PedestalState } = {}
 local savePedestalData: (Player, PedestalState) -> ()
+local lastOwnerUserIdByPlot: { [any]: number? } = {}
+local observedPlotModels: { [Model]: boolean } = {}
 
 type BrainrotCatalogMetadata = {
 	displayName: string,
@@ -73,15 +76,18 @@ end
 local function updateMoneyLabel(state: PedestalState)
 	local isOccupied = state.placedRarity ~= nil and state.placedModelName ~= nil
 	local bankedMoney = math.max(0, state.bankedMoney)
+	local suppressUnoccupiedMoneyDisplay = state.suppressUnoccupiedMoneyDisplay == true
 
-	-- Only hide text when the pedestal is empty and there is no banked payout.
-	local displayText = if not isOccupied and bankedMoney <= 0 then "" else formatMoney(bankedMoney)
+	-- For vacated/unowned plots, hide unoccupied values without mutating persisted banked money.
+	local shouldHideUnoccupiedValue = not isOccupied and (bankedMoney <= 0 or suppressUnoccupiedMoneyDisplay)
+	local displayText = if shouldHideUnoccupiedValue then "" else formatMoney(bankedMoney)
 	state.moneyLabel.Text = displayText
 
 	-- Mirror state for client-side display enforcement.
 	state.collectButton:SetAttribute("IsPedestalCollectButton", true)
 	state.collectButton:SetAttribute("PedestalOccupied", isOccupied)
 	state.collectButton:SetAttribute("PedestalBankedMoney", bankedMoney)
+	state.collectButton:SetAttribute("PedestalSuppressUnoccupiedMoney", suppressUnoccupiedMoneyDisplay)
 end
 
 local function getRatePerSecond(rarity: string, modelName: string): number
@@ -188,6 +194,7 @@ local function onRemovePromptTriggered(state: PedestalState, player: Player)
 	state.placedRarity = nil
 	state.placedModelName = nil
 	state.ratePerSecond = 0
+	state.suppressUnoccupiedMoneyDisplay = false
 	clearPlacedDisplay(state)
 	updateMoneyLabel(state)
 	savePedestalData(player, state)
@@ -270,6 +277,7 @@ local function applyPedestalData(state: PedestalState, data: any)
 	state.placedModelName = nil
 	state.ratePerSecond = 0
 	state.bankedMoney = 0
+	state.suppressUnoccupiedMoneyDisplay = false
 	clearPlacedDisplay(state)
 
 	if typeof(data) ~= "table" then
@@ -292,6 +300,65 @@ local function applyPedestalData(state: PedestalState, data: any)
 	end
 
 	updateMoneyLabel(state)
+end
+
+local function clearPedestalOccupancyForPlot(plot: any)
+	local plotPedestals = pedestalsByPlot[plot]
+	if not plotPedestals then
+		return
+	end
+
+	for _, state in plotPedestals do
+		state.suppressUnoccupiedMoneyDisplay = true
+		if
+			state.placedRarity ~= nil
+			or state.placedModelName ~= nil
+			or state.placedDisplayModel ~= nil
+			or state.removePrompt ~= nil
+		then
+			state.placedRarity = nil
+			state.placedModelName = nil
+			state.ratePerSecond = 0
+			clearPlacedDisplay(state)
+		end
+
+		updateMoneyLabel(state)
+	end
+end
+
+local function getPlotModel(plot: any): Model?
+	local model = plot._model
+	if model and model:IsA("Model") then
+		return model
+	end
+
+	return nil
+end
+
+local function resolvePlotOwnerUserId(plot: any): number?
+	local model = getPlotModel(plot)
+	local attributeOwner = if model then model:GetAttribute("OwnerUserId") else nil
+	if typeof(attributeOwner) == "number" then
+		return attributeOwner
+	end
+
+	local ownerUserId = plot.ownerUserId
+	if typeof(ownerUserId) == "number" then
+		return ownerUserId
+	end
+
+	return nil
+end
+
+local function handlePlotOwnerChange(plot: any)
+	local previousOwnerUserId = lastOwnerUserIdByPlot[plot]
+	local currentOwnerUserId = resolvePlotOwnerUserId(plot)
+
+	if previousOwnerUserId ~= currentOwnerUserId then
+		-- Best-effort immediate world cleanup whenever ownership transitions.
+		clearPedestalOccupancyForPlot(plot)
+		lastOwnerUserIdByPlot[plot] = currentOwnerUserId
+	end
 end
 
 local function onPlacePromptTriggered(state: PedestalState, player: Player)
@@ -333,6 +400,7 @@ local function onPlacePromptTriggered(state: PedestalState, player: Player)
 	state.placedRarity = placingRarity
 	state.placedModelName = placingModelName
 	state.ratePerSecond = placingRate
+	state.suppressUnoccupiedMoneyDisplay = false
 	spawnPlacedDisplay(state, placingRarity, placingModelName)
 	updateMoneyLabel(state)
 
@@ -366,6 +434,7 @@ local function onCollectButtonTouched(state: PedestalState, hit: BasePart)
 
 	local payout = state.bankedMoney
 	state.bankedMoney = 0
+	state.suppressUnoccupiedMoneyDisplay = false
 	updateMoneyLabel(state)
 	DataManager.UpdateMoney(player, payout)
 	savePedestalData(player, state)
@@ -411,6 +480,7 @@ local function buildPedestalState(plot: any, pedestalId: string, pedestalModel: 
 		placedDisplayModel = nil,
 		removePrompt = nil,
 		collectDebounceAt = 0,
+		suppressUnoccupiedMoneyDisplay = false,
 	}
 
 	placePrompt:SetAttribute("IsPedestalPlacePrompt", true)
@@ -432,6 +502,7 @@ local function initializePedestals()
 	for _, plot in PlotManager.GetAllPlots() do
 		local byId: { [string]: PedestalState } = {}
 		pedestalsByPlot[plot] = byId
+		lastOwnerUserIdByPlot[plot] = resolvePlotOwnerUserId(plot)
 
 		for pedestalId, pedestalModel in plot:GetPedestals() do
 			local state = buildPedestalState(plot, pedestalId, pedestalModel)
@@ -439,6 +510,19 @@ local function initializePedestals()
 			pedestalByPrompt[state.placePrompt] = state
 			pedestalByCollectButton[state.collectButton] = state
 			table.insert(allPedestalStates, state)
+		end
+
+		local plotModel = getPlotModel(plot)
+		if plotModel and not observedPlotModels[plotModel] then
+			observedPlotModels[plotModel] = true
+			plotModel:GetAttributeChangedSignal("OwnerUserId"):Connect(function()
+				handlePlotOwnerChange(plot)
+			end)
+			plotModel.Destroying:Connect(function()
+				observedPlotModels[plotModel] = nil
+				lastOwnerUserIdByPlot[plot] = nil
+				pedestalsByPlot[plot] = nil
+			end)
 		end
 	end
 end
@@ -488,6 +572,19 @@ end
 
 Players.PlayerAdded:Connect(function(player)
 	task.spawn(restorePedestalsForPlayer, player)
+end)
+
+Players.PlayerRemoving:Connect(function(player)
+	local targetUserId = player.UserId
+	for plot in pedestalsByPlot do
+		local ownerUserId = resolvePlotOwnerUserId(plot)
+		local lastOwnerUserId = lastOwnerUserIdByPlot[plot]
+		if ownerUserId == targetUserId or lastOwnerUserId == targetUserId then
+			-- Best-effort immediate clear even if owner flip happened first.
+			clearPedestalOccupancyForPlot(plot)
+			lastOwnerUserIdByPlot[plot] = nil
+		end
+	end
 end)
 
 task.spawn(function()
