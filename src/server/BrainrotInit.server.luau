@@ -8,6 +8,8 @@ local BrainrotToolManager = require(ReplicatedStorage.Shared.Managers.BrainrotTo
 local spinnersFolder = workspace:WaitForChild("Spinners")
 local brainrotsRoot = ReplicatedStorage:WaitForChild("Brainrots")
 local safeZonePart = workspace:WaitForChild("World"):WaitForChild("SafeZone")
+local remotes = ReplicatedStorage:WaitForChild("Remotes")
+local mythicSpawnedRemote = remotes:WaitForChild("MythicSpawned") :: RemoteEvent
 
 local BRAINROT_LIFETIME_SECONDS = 60
 local BRAINROT_RESPAWN_DELAY_SECONDS = 30
@@ -336,6 +338,10 @@ local function spawnBrainrotForSpinnerTop(spinnerTop: Model)
 		showDespawnCountdown = true,
 		lifetimeSeconds = lifetimeSeconds,
 	})
+
+	if isMythic then
+		mythicSpawnedRemote:FireAllClients()
+	end
 
 	local spawnToken = incrementSpinnerToken(spinnerTop)
 

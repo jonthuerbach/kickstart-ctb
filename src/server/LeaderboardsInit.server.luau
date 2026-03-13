@@ -21,8 +21,8 @@ type LeaderboardView = {
 	formatValue: (number) -> string,
 }
 
-local DISPLAY_REFRESH_INTERVAL_SECONDS = 30
-local WRITE_FLUSH_INTERVAL_SECONDS = 10
+local DISPLAY_REFRESH_INTERVAL_SECONDS = 45
+local WRITE_FLUSH_INTERVAL_SECONDS = 30
 local LEADERBOARD_PAGE_SIZE = 25
 
 local GENERATED_ENTRY_ATTRIBUTE = "GeneratedLeaderboardEntry"
@@ -96,6 +96,7 @@ local leaderboardSpecs: { LeaderboardSpec } = {
 
 local orderedStoresByName: { [string]: OrderedDataStore } = {}
 local leaderboardViews: { LeaderboardView } = {}
+local leaderboardSpecsByStoreName: { [string]: LeaderboardSpec } = {}
 
 local pendingWrites: { [number]: { [string]: number } } = {}
 local lastWrittenValues: { [number]: { [string]: number } } = {}
@@ -285,6 +286,15 @@ local function queuePlayerStatWrites(player: Player)
 	end
 end
 
+local function queueSingleStatWrite(player: Player, dataStoreName: string)
+	local spec = leaderboardSpecsByStoreName[dataStoreName]
+	if not spec then
+		return
+	end
+
+	queueWrite(player.UserId, spec.dataStoreName, spec.getValue(player))
+end
+
 local function flushPendingWrites()
 	for userId, userWrites in pendingWrites do
 		local lastWritesForUser = lastWrittenValues[userId]
@@ -389,7 +399,7 @@ end
 
 local function connectPlayerSignals(player: Player)
 	player:GetAttributeChangedSignal("SpeedDisplay"):Connect(function()
-		queuePlayerStatWrites(player)
+		queueSingleStatWrite(player, "GlobalLeaderboard_Speed_v1")
 	end)
 
 	task.defer(function()
@@ -403,13 +413,13 @@ local function connectPlayerSignals(player: Player)
 
 		if moneyValue and moneyValue:IsA("NumberValue") then
 			moneyValue.Changed:Connect(function()
-				queuePlayerStatWrites(player)
+				queueSingleStatWrite(player, "GlobalLeaderboard_Money_v1")
 			end)
 		end
 
 		if rebirthValue and rebirthValue:IsA("NumberValue") then
 			rebirthValue.Changed:Connect(function()
-				queuePlayerStatWrites(player)
+				queueSingleStatWrite(player, "GlobalLeaderboard_Rebirth_v1")
 			end)
 		end
 
@@ -419,6 +429,7 @@ end
 
 for _, spec in leaderboardSpecs do
 	orderedStoresByName[spec.dataStoreName] = DataStoreService:GetOrderedDataStore(spec.dataStoreName)
+	leaderboardSpecsByStoreName[spec.dataStoreName] = spec
 end
 
 for _, spec in leaderboardSpecs do
@@ -458,7 +469,6 @@ end)
 task.spawn(function()
 	while true do
 		flushPendingWrites()
-		requestRefresh()
 		task.wait(WRITE_FLUSH_INTERVAL_SECONDS)
 	end
 end)

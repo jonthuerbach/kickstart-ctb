@@ -118,3 +118,10 @@ if not giftStatusMessage then
 	giftStatusMessage.Name = "GiftStatusMessage"
 	giftStatusMessage.Parent = remotes
 end
+
+local mythicSpawned = remotes:FindFirstChild("MythicSpawned")
+if not mythicSpawned then
+	mythicSpawned = Instance.new("RemoteEvent")
+	mythicSpawned.Name = "MythicSpawned"
+	mythicSpawned.Parent = remotes
+end
