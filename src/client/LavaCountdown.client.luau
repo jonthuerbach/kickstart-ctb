@@ -16,7 +16,7 @@ screenGui.Parent = playerGui
 local label = Instance.new("TextLabel")
 label.Name = "CountdownLabel"
 label.AnchorPoint = Vector2.new(0.5, 0)
-label.Position = UDim2.new(0.5, 0, 0, 24)
+label.Position = UDim2.new(0.5, 0, 0, 12)
 label.Size = UDim2.fromScale(0.5, 0.1)
 label.BackgroundTransparency = 1
 label.Text = ""
@@ -29,7 +29,7 @@ label.Parent = screenGui
 local stroke = Instance.new("UIStroke")
 stroke.Color = Color3.fromRGB(0, 0, 0)
 stroke.StrokeSizingMode = Enum.StrokeSizingMode.ScaledSize
-stroke.Thickness = 0.06
+stroke.Thickness = 0.1
 stroke.LineJoinMode = Enum.LineJoinMode.Round
 stroke.Parent = label
 
