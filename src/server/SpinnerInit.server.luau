@@ -121,9 +121,9 @@ for attachmentIndex, spinnerAttachment in ipairs(spinnerAttachments) do
 		spinnerClone:SetAttribute("Speed", randomSpeed)
 		spinnerClone:SetAttribute("SignedSpeed", signedSpeed)
 		spinnerClone:SetAttribute("IsSpinnerTop", false)
-		spinnerClone.SpinnerTrunk.Color = i % 2 == 0 and Color3.fromRGB(255, 255, 255)
+		spinnerClone.SpinnerTrunk.Color = i % 2 == 0 and Color3.fromRGB(227, 227, 227)
 			or BrickColor.new("Bright red").Color
-		spinnerClone.SpinnerBranch.Color = i % 2 == 0 and Color3.fromRGB(255, 255, 255)
+		spinnerClone.SpinnerBranch.Color = i % 2 == 0 and Color3.fromRGB(227, 227, 227)
 			or BrickColor.new("Bright red").Color
 		spinnerClone:PivotTo(CFrame.new(currentPosition) * fixedRotation)
 
