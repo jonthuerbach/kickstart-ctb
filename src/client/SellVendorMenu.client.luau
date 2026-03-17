@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local ProximityPromptService = game:GetService("ProximityPromptService")
+local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
@@ -19,6 +20,13 @@ local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
 local activeSellMenu: BillboardGui? = nil
 local buttonsByName: { [string]: TextButton } = {}
+local menuItemButtons: { TextButton } = {} -- ordered for slide animation
+
+-- Slide-in animation config
+local SLIDE_DURATION = 0.18
+local SLIDE_STAGGER_DELAY = 0.06
+local SLIDE_EASING = Enum.EasingStyle.Quad
+local SLIDE_EASING_DIRECTION = Enum.EasingDirection.Out
 
 local menuOptions = {
 	{
@@ -37,14 +45,14 @@ local menuOptions = {
 			sellBrainrotActionRemote:FireServer("sell_all")
 		end,
 	},
-	{
-		id = "check_value",
-		name = "CheckValueButton",
-		text = "How much is this brainrot worth?",
-		onClick = function()
-			sellBrainrotActionRemote:FireServer("check_value")
-		end,
-	},
+	-- {
+	-- 	id = "check_value",
+	-- 	name = "CheckValueButton",
+	-- 	text = "How much is this brainrot worth?",
+	-- 	onClick = function()
+	-- 		sellBrainrotActionRemote:FireServer("check_value")
+	-- 	end,
+	-- },
 	{
 		id = "close",
 		name = "CloseButton",
@@ -70,10 +78,12 @@ end
 local buildSellMenuButton = function(option, parent: Instance, name: string)
 	local button = Instance.new("TextButton")
 	button.Name = name
+	button.AnchorPoint = Vector2.new(0, 0.5)
 	button.BackgroundColor3 = Color3.fromRGB(0, 0, 0)
 	button.BackgroundTransparency = 0.3
 	button.BorderSizePixel = 0
-	button.Size = UDim2.fromScale(1, 0.2)
+	button.Size = UDim2.fromScale(1, 1)
+	button.Position = UDim2.new(0, 0, 0.5, 0)
 	button.Text = ""
 	button.Parent = parent
 
@@ -125,6 +135,27 @@ local function resetConfirmButtonTexts()
 	setButtonText("SellAllButton", DEFAULT_BUTTON_TEXTS.SellAllButton)
 end
 
+local SLIDE_START_POSITION = UDim2.new(-1, 0, 0.5, 0)
+local SLIDE_END_POSITION = UDim2.new(0, 0, 0.5, 0)
+
+local function playSlideInAnimation()
+	if #menuItemButtons == 0 then
+		return
+	end
+
+	for _, button in ipairs(menuItemButtons) do
+		button.Position = SLIDE_START_POSITION
+	end
+
+	local tweenInfo = TweenInfo.new(SLIDE_DURATION, SLIDE_EASING, SLIDE_EASING_DIRECTION)
+	for index, button in ipairs(menuItemButtons) do
+		task.delay((index - 1) * SLIDE_STAGGER_DELAY, function()
+			local tween = TweenService:Create(button, tweenInfo, { Position = SLIDE_END_POSITION })
+			tween:Play()
+		end)
+	end
+end
+
 local buildSellMenu = function(head: BasePart): BillboardGui
 	local sellMenu = Instance.new("BillboardGui")
 	sellMenu.Name = "SellMenu"
@@ -138,6 +169,7 @@ local buildSellMenu = function(head: BasePart): BillboardGui
 	sellMenu.Parent = playerGui
 
 	local sellMenuBody = Instance.new("Frame")
+	sellMenuBody.Name = "Body"
 	sellMenuBody.Size = UDim2.fromScale(1, 1)
 	sellMenuBody.BackgroundTransparency = 1
 	sellMenuBody.BorderSizePixel = 0
@@ -151,9 +183,19 @@ local buildSellMenu = function(head: BasePart): BillboardGui
 	sellMenuUi.HorizontalAlignment = Enum.HorizontalAlignment.Left
 	sellMenuUi.Parent = sellMenuBody
 
-	for _, option in ipairs(menuOptions) do
-		local button = buildSellMenuButton(option, sellMenuBody, option.name)
+	table.clear(menuItemButtons)
+	for index, option in ipairs(menuOptions) do
+		local itemFrame = Instance.new("Frame")
+		itemFrame.Name = option.name .. "Frame"
+		itemFrame.Size = UDim2.fromScale(1, 0.2)
+		itemFrame.BackgroundTransparency = 1
+		itemFrame.ClipsDescendants = true
+		itemFrame.LayoutOrder = index
+		itemFrame.Parent = sellMenuBody
+
+		local button = buildSellMenuButton(option, itemFrame, option.name)
 		buttonsByName[option.name] = button
+		table.insert(menuItemButtons, button)
 	end
 
 	return sellMenu
@@ -169,6 +211,25 @@ local function bindCharacter(character: Model)
 		local existingMenu = existing :: BillboardGui
 		existingMenu.Adornee = head
 		activeSellMenu = existingMenu
+		-- Populate menuItemButtons for slide animation (existing menu from prior character)
+		table.clear(menuItemButtons)
+		local body = existingMenu:FindFirstChild("Body")
+		if body then
+			local framesByOrder: { [number]: TextButton } = {}
+			for _, child in ipairs(body:GetChildren()) do
+				if child:IsA("Frame") then
+					local button = child:FindFirstChildOfClass("TextButton")
+					if button then
+						framesByOrder[child.LayoutOrder] = button
+					end
+				end
+			end
+			for i = 1, #menuOptions do
+				if framesByOrder[i] then
+					table.insert(menuItemButtons, framesByOrder[i])
+				end
+			end
+		end
 	else
 		activeSellMenu = buildSellMenu(head)
 	end
@@ -184,9 +245,11 @@ if player.Character then
 end
 
 toggleSellVendorMenuRemote.OnClientEvent:Connect(function(visible: boolean)
-	print(`[SellVendorMenu] {visible}`)
 	if activeSellMenu then
 		activeSellMenu.Enabled = visible
+		if visible then
+			playSlideInAnimation()
+		end
 	end
 	if not visible then
 		resetConfirmButtonTexts()
