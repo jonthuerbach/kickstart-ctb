@@ -7,6 +7,8 @@ local BrainrotToolManager = require(ReplicatedStorage.Shared.Managers.BrainrotTo
 local BrainrotCatalog = require(ReplicatedStorage.Shared.Catalogs.BrainrotCatalog)
 local BrainrotBillboard = require(ReplicatedStorage.Shared.Utils.BrainrotBillboard)
 local NumberFormatter = require(ReplicatedStorage.Shared.Utils.NumberFormatter)
+local remotes = ReplicatedStorage:WaitForChild("Remotes")
+local requestPedestalUpgradeRemote = remotes:WaitForChild("RequestPedestalUpgrade") :: RemoteEvent
 
 local brainrotsRoot = ReplicatedStorage:WaitForChild("Brainrots")
 
@@ -17,9 +19,14 @@ type PedestalState = {
 	placePrompt: ProximityPrompt,
 	collectButton: BasePart,
 	moneyLabel: TextLabel,
+	upgradeSurfaceGui: SurfaceGui,
+	upgradeButton: GuiButton,
+	upgradeCostLabel: TextLabel,
+	upgradeLevelLabel: TextLabel,
 	brainrotAttachment: Attachment,
 	placedRarity: string?,
 	placedModelName: string?,
+	brainrotLevel: number,
 	ratePerSecond: number,
 	bankedMoney: number,
 	placedDisplayModel: Model?,
@@ -30,11 +37,13 @@ type PedestalState = {
 
 local pedestalByPrompt: { [ProximityPrompt]: PedestalState } = {}
 local pedestalByCollectButton: { [BasePart]: PedestalState } = {}
+local pedestalByUpgradeButton: { [GuiButton]: PedestalState } = {}
 local pedestalsByPlot: { [any]: { [string]: PedestalState } } = {}
 local allPedestalStates: { PedestalState } = {}
 local savePedestalData: (Player, PedestalState) -> ()
 local lastOwnerUserIdByPlot: { [any]: number? } = {}
 local observedPlotModels: { [Model]: boolean } = {}
+local upgradeInFlightByPlayer: { [Player]: boolean } = {}
 
 type BrainrotCatalogMetadata = {
 	displayName: string,
@@ -71,6 +80,26 @@ end
 
 local function formatMoney(amount: number): string
 	return NumberFormatter.FormatMoney(amount)
+end
+
+local function getUpgradeCost(ratePerSecond: number): number
+	return math.ceil(math.max(0, ratePerSecond) * 1.45)
+end
+
+local function updateUpgradeDisplay(state: PedestalState)
+	local isOccupied = state.placedRarity ~= nil and state.placedModelName ~= nil
+	state.upgradeSurfaceGui.Enabled = isOccupied
+	if not isOccupied then
+		state.upgradeCostLabel.Text = ""
+		state.upgradeLevelLabel.Text = ""
+		return
+	end
+
+	local currentLevel = math.max(1, state.brainrotLevel)
+	local nextLevel = currentLevel + 1
+	local upgradeCost = getUpgradeCost(state.ratePerSecond)
+	state.upgradeCostLabel.Text = formatMoney(upgradeCost)
+	state.upgradeLevelLabel.Text = `Level {currentLevel} > Level {nextLevel}`
 end
 
 local function updateMoneyLabel(state: PedestalState)
@@ -193,10 +222,12 @@ local function onRemovePromptTriggered(state: PedestalState, player: Player)
 
 	state.placedRarity = nil
 	state.placedModelName = nil
+	state.brainrotLevel = 1
 	state.ratePerSecond = 0
 	state.suppressUnoccupiedMoneyDisplay = false
 	clearPlacedDisplay(state)
 	updateMoneyLabel(state)
+	updateUpgradeDisplay(state)
 	savePedestalData(player, state)
 end
 
@@ -224,6 +255,7 @@ local function spawnPlacedDisplay(state: PedestalState, rarity: string, modelNam
 	display:SetAttribute("ModelName", modelName)
 	display:SetAttribute("Rarity", rarity)
 	display:SetAttribute("RatePerSecond", state.ratePerSecond)
+	display:SetAttribute("Level", state.brainrotLevel)
 	display:SetAttribute("Mutation", metadata.mutation)
 	BrainrotBillboard.CreateFromAttributes(display, {
 		variant = "Pedestal",
@@ -248,10 +280,26 @@ local function spawnPlacedDisplay(state: PedestalState, rarity: string, modelNam
 	state.removePrompt = removePrompt
 end
 
+local function refreshPlacedDisplayStats(state: PedestalState)
+	local display = state.placedDisplayModel
+	if not display then
+		return
+	end
+
+	display:SetAttribute("RatePerSecond", state.ratePerSecond)
+	display:SetAttribute("Level", state.brainrotLevel)
+	BrainrotBillboard.CreateFromAttributes(display, {
+		variant = "Pedestal",
+		showDespawnCountdown = false,
+	})
+end
+
 savePedestalData = function(player: Player, state: PedestalState)
 	DataManager.SetPedestalData(player, state.pedestalId, {
 		rarity = state.placedRarity,
 		modelName = state.placedModelName,
+		level = state.brainrotLevel,
+		ratePerSecond = state.ratePerSecond,
 		bankedMoney = state.bankedMoney,
 	})
 end
@@ -275,6 +323,7 @@ end
 local function applyPedestalData(state: PedestalState, data: any)
 	state.placedRarity = nil
 	state.placedModelName = nil
+	state.brainrotLevel = 1
 	state.ratePerSecond = 0
 	state.bankedMoney = 0
 	state.suppressUnoccupiedMoneyDisplay = false
@@ -282,6 +331,7 @@ local function applyPedestalData(state: PedestalState, data: any)
 
 	if typeof(data) ~= "table" then
 		updateMoneyLabel(state)
+		updateUpgradeDisplay(state)
 		return
 	end
 
@@ -295,11 +345,25 @@ local function applyPedestalData(state: PedestalState, data: any)
 	if typeof(rarity) == "string" and typeof(modelName) == "string" then
 		state.placedRarity = rarity
 		state.placedModelName = modelName
-		state.ratePerSecond = getRatePerSecond(rarity, modelName)
+		local savedLevel = data.level
+		if typeof(savedLevel) == "number" and savedLevel >= 1 then
+			state.brainrotLevel = math.floor(savedLevel)
+		else
+			state.brainrotLevel = 1
+		end
+
+		local savedRate = data.ratePerSecond
+		if typeof(savedRate) == "number" and savedRate > 0 then
+			state.ratePerSecond = math.floor(savedRate)
+		else
+			state.ratePerSecond = getRatePerSecond(rarity, modelName)
+		end
+
 		spawnPlacedDisplay(state, rarity, modelName)
 	end
 
 	updateMoneyLabel(state)
+	updateUpgradeDisplay(state)
 end
 
 local function clearPedestalOccupancyForPlot(plot: any)
@@ -318,11 +382,13 @@ local function clearPedestalOccupancyForPlot(plot: any)
 		then
 			state.placedRarity = nil
 			state.placedModelName = nil
+			state.brainrotLevel = 1
 			state.ratePerSecond = 0
 			clearPlacedDisplay(state)
 		end
 
 		updateMoneyLabel(state)
+		updateUpgradeDisplay(state)
 	end
 end
 
@@ -399,10 +465,12 @@ local function onPlacePromptTriggered(state: PedestalState, player: Player)
 
 	state.placedRarity = placingRarity
 	state.placedModelName = placingModelName
+	state.brainrotLevel = 1
 	state.ratePerSecond = placingRate
 	state.suppressUnoccupiedMoneyDisplay = false
 	spawnPlacedDisplay(state, placingRarity, placingModelName)
 	updateMoneyLabel(state)
+	updateUpgradeDisplay(state)
 
 	savePedestalData(player, state)
 end
@@ -440,6 +508,59 @@ local function onCollectButtonTouched(state: PedestalState, hit: BasePart)
 	savePedestalData(player, state)
 end
 
+local function onUpgradeButtonRequested(player: Player, upgradeButtonInstance: Instance?)
+	if upgradeInFlightByPlayer[player] then
+		return
+	end
+	upgradeInFlightByPlayer[player] = true
+
+	local upgradeButton = if upgradeButtonInstance and upgradeButtonInstance:IsA("GuiButton") then upgradeButtonInstance else nil
+	if not upgradeButton then
+		upgradeInFlightByPlayer[player] = nil
+		return
+	end
+
+	local state = pedestalByUpgradeButton[upgradeButton]
+	if not state then
+		upgradeInFlightByPlayer[player] = nil
+		return
+	end
+
+	if state.plot.ownerUserId ~= player.UserId then
+		upgradeInFlightByPlayer[player] = nil
+		return
+	end
+
+	if state.placedRarity == nil or state.placedModelName == nil or state.ratePerSecond <= 0 then
+		updateUpgradeDisplay(state)
+		upgradeInFlightByPlayer[player] = nil
+		return
+	end
+
+	local profile = DataManager.Profiles[player]
+	if not profile then
+		upgradeInFlightByPlayer[player] = nil
+		return
+	end
+
+	local currentMoney = profile.Data.Money
+	local upgradeCost = getUpgradeCost(state.ratePerSecond)
+	if typeof(currentMoney) ~= "number" or currentMoney < upgradeCost then
+		updateUpgradeDisplay(state)
+		upgradeInFlightByPlayer[player] = nil
+		return
+	end
+
+	DataManager.UpdateMoney(player, -upgradeCost)
+	state.ratePerSecond = math.ceil(state.ratePerSecond * 1.25)
+	state.brainrotLevel = math.max(1, state.brainrotLevel) + 1
+	refreshPlacedDisplayStats(state)
+	updateUpgradeDisplay(state)
+	savePedestalData(player, state)
+
+	upgradeInFlightByPlayer[player] = nil
+end
+
 local function buildPedestalState(plot: any, pedestalId: string, pedestalModel: Model): PedestalState
 	local pedestal = pedestalModel:WaitForChild("Pedestal")
 	local placeAttachment = pedestal:WaitForChild("PlaceAttachment")
@@ -450,6 +571,12 @@ local function buildPedestalState(plot: any, pedestalId: string, pedestalModel: 
 	local collectButton = button:WaitForChild("CollectButton")
 	local surfaceGui = collectButton:WaitForChild("SurfaceGui")
 	local moneyLabel = surfaceGui:WaitForChild("MoneyLabel")
+	local upgradeButtonRoot = pedestalModel:WaitForChild("UpgradeButton")
+	local upgradeButtonBase = upgradeButtonRoot:WaitForChild("UpgradeButtonBase")
+	local upgradeSurfaceGui = upgradeButtonBase:WaitForChild("SurfaceGui")
+	local upgradeButton = upgradeSurfaceGui:WaitForChild("UpgradeButton")
+	local upgradeCostLabel = upgradeButton:WaitForChild("Cost")
+	local upgradeLevelLabel = upgradeButton:WaitForChild("Level")
 
 	assert(
 		placePrompt:IsA("ProximityPrompt"),
@@ -464,6 +591,19 @@ local function buildPedestalState(plot: any, pedestalId: string, pedestalModel: 
 		moneyLabel:IsA("TextLabel"),
 		`[PedestalInit] {pedestalModel.Name} CollectButton.SurfaceGui.MoneyLabel must be a TextLabel`
 	)
+	assert(
+		upgradeSurfaceGui:IsA("SurfaceGui"),
+		`[PedestalInit] {pedestalModel.Name} UpgradeButtonBase.SurfaceGui must be a SurfaceGui`
+	)
+	assert(upgradeButton:IsA("GuiButton"), `[PedestalInit] {pedestalModel.Name} UpgradeButton must be a GuiButton`)
+	assert(
+		upgradeCostLabel:IsA("TextLabel"),
+		`[PedestalInit] {pedestalModel.Name} UpgradeButton.Cost must be a TextLabel`
+	)
+	assert(
+		upgradeLevelLabel:IsA("TextLabel"),
+		`[PedestalInit] {pedestalModel.Name} UpgradeButton.Level must be a TextLabel`
+	)
 
 	local state: PedestalState = {
 		plot = plot,
@@ -472,9 +612,14 @@ local function buildPedestalState(plot: any, pedestalId: string, pedestalModel: 
 		placePrompt = placePrompt,
 		collectButton = collectButton,
 		moneyLabel = moneyLabel,
+		upgradeSurfaceGui = upgradeSurfaceGui :: SurfaceGui,
+		upgradeButton = upgradeButton :: GuiButton,
+		upgradeCostLabel = upgradeCostLabel :: TextLabel,
+		upgradeLevelLabel = upgradeLevelLabel :: TextLabel,
 		brainrotAttachment = brainrotAttachment,
 		placedRarity = nil,
 		placedModelName = nil,
+		brainrotLevel = 1,
 		ratePerSecond = 0,
 		bankedMoney = 0,
 		placedDisplayModel = nil,
@@ -485,6 +630,8 @@ local function buildPedestalState(plot: any, pedestalId: string, pedestalModel: 
 
 	placePrompt:SetAttribute("IsPedestalPlacePrompt", true)
 	placePrompt:SetAttribute("PedestalId", pedestalId)
+	state.upgradeButton:SetAttribute("IsPedestalUpgradeButton", true)
+	state.upgradeButton:SetAttribute("PedestalId", pedestalId)
 
 	placePrompt.Triggered:Connect(function(player: Player)
 		onPlacePromptTriggered(state, player)
@@ -493,6 +640,7 @@ local function buildPedestalState(plot: any, pedestalId: string, pedestalModel: 
 		onCollectButtonTouched(state, hit)
 	end)
 	updateMoneyLabel(state)
+	updateUpgradeDisplay(state)
 
 	return state
 end
@@ -509,6 +657,7 @@ local function initializePedestals()
 			byId[pedestalId] = state
 			pedestalByPrompt[state.placePrompt] = state
 			pedestalByCollectButton[state.collectButton] = state
+			pedestalByUpgradeButton[state.upgradeButton] = state
 			table.insert(allPedestalStates, state)
 		end
 
@@ -565,6 +714,7 @@ end
 
 buildMetadataLookup()
 initializePedestals()
+requestPedestalUpgradeRemote.OnServerEvent:Connect(onUpgradeButtonRequested)
 
 for _, player in Players:GetPlayers() do
 	task.spawn(restorePedestalsForPlayer, player)
@@ -575,6 +725,7 @@ Players.PlayerAdded:Connect(function(player)
 end)
 
 Players.PlayerRemoving:Connect(function(player)
+	upgradeInFlightByPlayer[player] = nil
 	local targetUserId = player.UserId
 	for plot in pedestalsByPlot do
 		local ownerUserId = resolvePlotOwnerUserId(plot)

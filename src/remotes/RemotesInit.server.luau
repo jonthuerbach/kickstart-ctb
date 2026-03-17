@@ -125,3 +125,10 @@ if not mythicSpawned then
 	mythicSpawned.Name = "MythicSpawned"
 	mythicSpawned.Parent = remotes
 end
+
+local requestPedestalUpgrade = remotes:FindFirstChild("RequestPedestalUpgrade")
+if not requestPedestalUpgrade then
+	requestPedestalUpgrade = Instance.new("RemoteEvent")
+	requestPedestalUpgrade.Name = "RequestPedestalUpgrade"
+	requestPedestalUpgrade.Parent = remotes
+end
