@@ -1,5 +1,6 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
 local NumberFormatter = require(ReplicatedStorage.Shared.Utils.NumberFormatter)
 local player = Players.LocalPlayer
@@ -32,14 +33,40 @@ local upgradeLabelX10 = upgradePanelX10:WaitForChild("UpgradeLabel")
 
 assert(speedMenu:IsA("GuiObject"), "[SpeedVendorMenu] MainGui.SpeedMenu must be a GuiObject")
 assert(closeButton:IsA("GuiButton"), "[SpeedVendorMenu] SpeedMenu.Header.CloseButton must be a GuiButton")
+
+-- Animation config
+local OPEN_START_SCALE = 0.4
+local OPEN_OVERSHOOT_SCALE = 1.08
+local CLOSE_END_SCALE = 0.4
+local OPEN_DURATION = 0.15
+local CLOSE_DURATION = 0.1
+local OPEN_PHASE1_RATIO = 0.57 -- ~0.2s for scale-up, ~0.15s for settle
+local EASING_UP = Enum.EasingStyle.Quad
+local EASING_DIRECTION_OUT = Enum.EasingDirection.Out
+
+local speedMenuRestSize = speedMenu.Size
+local isAnimating = false
+
+local function scaleUDim2(udim2: UDim2, factor: number): UDim2
+	return UDim2.new(udim2.X.Scale * factor, udim2.X.Offset * factor, udim2.Y.Scale * factor, udim2.Y.Offset * factor)
+end
 assert(buyButtonX1:IsA("GuiButton"), "[SpeedVendorMenu] SpeedMenu.Body.UpgradePanelx1.BuyButton must be a GuiButton")
-assert(buyButtonX1TextLabel:IsA("TextLabel"), "[SpeedVendorMenu] UpgradePanelx1.BuyButton.TextLabel must be a TextLabel")
+assert(
+	buyButtonX1TextLabel:IsA("TextLabel"),
+	"[SpeedVendorMenu] UpgradePanelx1.BuyButton.TextLabel must be a TextLabel"
+)
 assert(upgradeLabelX1:IsA("TextLabel"), "[SpeedVendorMenu] UpgradePanelx1.UpgradeLabel must be a TextLabel")
 assert(buyButtonX5:IsA("GuiButton"), "[SpeedVendorMenu] SpeedMenu.Body.UpgradePanelx5.BuyButton must be a GuiButton")
-assert(buyButtonX5TextLabel:IsA("TextLabel"), "[SpeedVendorMenu] UpgradePanelx5.BuyButton.TextLabel must be a TextLabel")
+assert(
+	buyButtonX5TextLabel:IsA("TextLabel"),
+	"[SpeedVendorMenu] UpgradePanelx5.BuyButton.TextLabel must be a TextLabel"
+)
 assert(upgradeLabelX5:IsA("TextLabel"), "[SpeedVendorMenu] UpgradePanelx5.UpgradeLabel must be a TextLabel")
 assert(buyButtonX10:IsA("GuiButton"), "[SpeedVendorMenu] SpeedMenu.Body.UpgradePanelx10.BuyButton must be a GuiButton")
-assert(buyButtonX10TextLabel:IsA("TextLabel"), "[SpeedVendorMenu] UpgradePanelx10.BuyButton.TextLabel must be a TextLabel")
+assert(
+	buyButtonX10TextLabel:IsA("TextLabel"),
+	"[SpeedVendorMenu] UpgradePanelx10.BuyButton.TextLabel must be a TextLabel"
+)
 assert(upgradeLabelX10:IsA("TextLabel"), "[SpeedVendorMenu] UpgradePanelx10.UpgradeLabel must be a TextLabel")
 
 local function setUpgradeLabelText(label: TextLabel, speedDelta: number, displayCurrentLevel: number)
@@ -54,6 +81,55 @@ end
 
 local function formatCost(cost: number): string
 	return NumberFormatter.FormatMoney(cost)
+end
+
+local function playOpenAnimation()
+	if isAnimating then
+		return
+	end
+	isAnimating = true
+
+	speedMenu.Size = scaleUDim2(speedMenuRestSize, OPEN_START_SCALE)
+	speedMenu.Visible = true
+
+	local phase1Duration = OPEN_DURATION * OPEN_PHASE1_RATIO
+	local phase2Duration = OPEN_DURATION * (1 - OPEN_PHASE1_RATIO)
+	local tweenInfo1 = TweenInfo.new(phase1Duration, EASING_UP, EASING_DIRECTION_OUT)
+	local tweenInfo2 = TweenInfo.new(phase2Duration, EASING_UP, EASING_DIRECTION_OUT)
+
+	local tween1 = TweenService:Create(speedMenu, tweenInfo1, {
+		Size = scaleUDim2(speedMenuRestSize, OPEN_OVERSHOOT_SCALE),
+	})
+	local tween2 = TweenService:Create(speedMenu, tweenInfo2, {
+		Size = speedMenuRestSize,
+	})
+
+	tween1:Play()
+	tween1.Completed:Connect(function()
+		tween2:Play()
+		tween2.Completed:Connect(function()
+			isAnimating = false
+		end)
+	end)
+end
+
+local function playCloseAnimation()
+	if isAnimating then
+		return
+	end
+	isAnimating = true
+
+	local tweenInfo = TweenInfo.new(CLOSE_DURATION, EASING_UP, EASING_DIRECTION_OUT)
+	local tween = TweenService:Create(speedMenu, tweenInfo, {
+		Size = scaleUDim2(speedMenuRestSize, CLOSE_END_SCALE),
+	})
+
+	tween:Play()
+	tween.Completed:Connect(function()
+		speedMenu.Visible = false
+		speedMenu.Size = speedMenuRestSize
+		isAnimating = false
+	end)
 end
 
 local function applyState(state: { [string]: any })
@@ -93,11 +169,13 @@ local function applyState(state: { [string]: any })
 	buyButtonX10.Active = canAffordX10
 	buyButtonX10.AutoButtonColor = canAffordX10
 
-	speedMenu.Visible = true
+	if not speedMenu.Visible then
+		playOpenAnimation()
+	end
 end
 
 closeButton.Activated:Connect(function()
-	speedMenu.Visible = false
+	playCloseAnimation()
 end)
 
 buyButtonX1.Activated:Connect(function()
