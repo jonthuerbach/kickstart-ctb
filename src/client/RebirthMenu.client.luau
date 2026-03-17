@@ -1,5 +1,6 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 local MovementConfig = require(ReplicatedStorage.Shared.Configs.MovementConfig)
 
 local player = Players.LocalPlayer
@@ -27,6 +28,28 @@ assert(rebirthMenuCloseButton:IsA("GuiButton"), "[RebirthMenu] RebirthMenu.Heade
 assert(rebirthButton:IsA("GuiButton"), "[RebirthMenu] RebirthMenu.Body.Requires.RebirthButton must be a GuiButton")
 assert(progressBar:IsA("GuiObject"), "[RebirthMenu] RebirthMenu.Requires.ProgressBarOutline.ProgressBar must be a GuiObject")
 assert(progressValue:IsA("TextLabel"), "[RebirthMenu] RebirthMenu.Requires.ProgressBarOutline.Value must be a TextLabel")
+
+-- Animation config (matches SpeedMenu)
+local OPEN_START_SCALE = 0.4
+local OPEN_OVERSHOOT_SCALE = 1.08
+local CLOSE_END_SCALE = 0.4
+local OPEN_DURATION = 0.15
+local CLOSE_DURATION = 0.1
+local OPEN_PHASE1_RATIO = 0.57
+local EASING_UP = Enum.EasingStyle.Quad
+local EASING_DIRECTION_OUT = Enum.EasingDirection.Out
+
+local rebirthMenuRestSize = rebirthMenu.Size
+local isAnimating = false
+
+local function scaleUDim2(udim2: UDim2, factor: number): UDim2
+	return UDim2.new(
+		udim2.X.Scale * factor,
+		udim2.X.Offset * factor,
+		udim2.Y.Scale * factor,
+		udim2.Y.Offset * factor
+	)
+end
 
 rebirthMenu.Visible = false
 
@@ -66,17 +89,66 @@ local function applyRebirthState(state: { [string]: any })
 	updateProgressUi(math.max(0, math.floor(serverDisplayedSpeed)), requiredDisplayedSpeed)
 end
 
+local function playOpenAnimation()
+	if isAnimating then
+		return
+	end
+	isAnimating = true
+
+	rebirthMenu.Size = scaleUDim2(rebirthMenuRestSize, OPEN_START_SCALE)
+	rebirthMenu.Visible = true
+
+	local phase1Duration = OPEN_DURATION * OPEN_PHASE1_RATIO
+	local phase2Duration = OPEN_DURATION * (1 - OPEN_PHASE1_RATIO)
+	local tweenInfo1 = TweenInfo.new(phase1Duration, EASING_UP, EASING_DIRECTION_OUT)
+	local tweenInfo2 = TweenInfo.new(phase2Duration, EASING_UP, EASING_DIRECTION_OUT)
+
+	local tween1 = TweenService:Create(rebirthMenu, tweenInfo1, {
+		Size = scaleUDim2(rebirthMenuRestSize, OPEN_OVERSHOOT_SCALE),
+	})
+	local tween2 = TweenService:Create(rebirthMenu, tweenInfo2, {
+		Size = rebirthMenuRestSize,
+	})
+
+	tween1:Play()
+	tween1.Completed:Connect(function()
+		tween2:Play()
+		tween2.Completed:Connect(function()
+			isAnimating = false
+		end)
+	end)
+end
+
+local function playCloseAnimation()
+	if isAnimating then
+		return
+	end
+	isAnimating = true
+
+	local tweenInfo = TweenInfo.new(CLOSE_DURATION, EASING_UP, EASING_DIRECTION_OUT)
+	local tween = TweenService:Create(rebirthMenu, tweenInfo, {
+		Size = scaleUDim2(rebirthMenuRestSize, CLOSE_END_SCALE),
+	})
+
+	tween:Play()
+	tween.Completed:Connect(function()
+		rebirthMenu.Visible = false
+		rebirthMenu.Size = rebirthMenuRestSize
+		isAnimating = false
+	end)
+end
+
 rebirthMenuButton.Activated:Connect(function()
 	if rebirthMenu.Visible then
-		rebirthMenu.Visible = false
+		playCloseAnimation()
 	else
-		rebirthMenu.Visible = true
+		playOpenAnimation()
 		requestRebirthStateRemote:FireServer()
 	end
 end)
 
 rebirthMenuCloseButton.Activated:Connect(function()
-	rebirthMenu.Visible = false
+	playCloseAnimation()
 end)
 
 rebirthButton.Activated:Connect(function()
