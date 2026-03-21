@@ -587,7 +587,7 @@ local function onUpgradeButtonRequested(player: Player, upgradeButtonInstance: I
 	end
 
 	DataManager.UpdateMoney(player, -upgradeCost)
-	state.ratePerSecond = math.ceil(state.ratePerSecond * 1.10)
+	state.ratePerSecond = math.ceil(state.ratePerSecond * 1.15)
 	state.upgradePrice = math.ceil(upgradeCost * 1.45)
 	state.brainrotLevel = math.min(MAX_BRAINROT_LEVEL, math.max(1, state.brainrotLevel) + 1)
 	refreshPlacedDisplayStats(state)
