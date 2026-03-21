@@ -29,6 +29,7 @@ type PedestalState = {
 	placedModelName: string?,
 	brainrotLevel: number,
 	ratePerSecond: number,
+	upgradePrice: number,
 	bankedMoney: number,
 	placedDisplayModel: Model?,
 	removePrompt: ProximityPrompt?,
@@ -87,7 +88,7 @@ local function formatMoney(amount: number): string
 	return NumberFormatter.FormatMoney(amount)
 end
 
-local function getUpgradeCost(ratePerSecond: number): number
+local function getInitialUpgradePrice(ratePerSecond: number): number
 	return math.ceil(math.max(0, ratePerSecond) * 1.45)
 end
 
@@ -113,8 +114,7 @@ local function updateUpgradeDisplay(state: PedestalState)
 	end
 
 	local nextLevel = currentLevel + 1
-	local upgradeCost = getUpgradeCost(state.ratePerSecond)
-	state.upgradeCostLabel.Text = formatMoney(upgradeCost)
+	state.upgradeCostLabel.Text = formatMoney(state.upgradePrice)
 	state.upgradeLevelLabel.Text = `Level {currentLevel} > Level {nextLevel}`
 end
 
@@ -240,6 +240,7 @@ local function onRemovePromptTriggered(state: PedestalState, player: Player)
 	state.placedModelName = nil
 	state.brainrotLevel = 1
 	state.ratePerSecond = 0
+	state.upgradePrice = 0
 	state.suppressUnoccupiedMoneyDisplay = false
 	clearPlacedDisplay(state)
 	updateMoneyLabel(state)
@@ -316,6 +317,7 @@ savePedestalData = function(player: Player, state: PedestalState)
 		modelName = state.placedModelName,
 		level = state.brainrotLevel,
 		ratePerSecond = state.ratePerSecond,
+		upgradePrice = state.upgradePrice,
 		bankedMoney = state.bankedMoney,
 	})
 end
@@ -341,6 +343,7 @@ local function applyPedestalData(state: PedestalState, data: any)
 	state.placedModelName = nil
 	state.brainrotLevel = 1
 	state.ratePerSecond = 0
+	state.upgradePrice = 0
 	state.bankedMoney = 0
 	state.suppressUnoccupiedMoneyDisplay = false
 	clearPlacedDisplay(state)
@@ -375,6 +378,13 @@ local function applyPedestalData(state: PedestalState, data: any)
 			state.ratePerSecond = getRatePerSecond(rarity, modelName)
 		end
 
+		local savedUpgradePrice = data.upgradePrice
+		if typeof(savedUpgradePrice) == "number" and savedUpgradePrice > 0 then
+			state.upgradePrice = math.floor(savedUpgradePrice)
+		else
+			state.upgradePrice = getInitialUpgradePrice(state.ratePerSecond)
+		end
+
 		spawnPlacedDisplay(state, rarity, modelName)
 	end
 
@@ -400,6 +410,7 @@ local function clearPedestalOccupancyForPlot(plot: any)
 			state.placedModelName = nil
 			state.brainrotLevel = 1
 			state.ratePerSecond = 0
+			state.upgradePrice = 0
 			clearPlacedDisplay(state)
 		end
 
@@ -483,6 +494,7 @@ local function onPlacePromptTriggered(state: PedestalState, player: Player)
 	state.placedModelName = placingModelName
 	state.brainrotLevel = 1
 	state.ratePerSecond = placingRate
+	state.upgradePrice = getInitialUpgradePrice(placingRate)
 	state.suppressUnoccupiedMoneyDisplay = false
 	spawnPlacedDisplay(state, placingRarity, placingModelName)
 	updateMoneyLabel(state)
@@ -567,15 +579,16 @@ local function onUpgradeButtonRequested(player: Player, upgradeButtonInstance: I
 	end
 
 	local currentMoney = profile.Data.Money
-	local upgradeCost = getUpgradeCost(state.ratePerSecond)
-	if typeof(currentMoney) ~= "number" or currentMoney < upgradeCost then
+	local upgradeCost = state.upgradePrice
+	if typeof(currentMoney) ~= "number" or upgradeCost <= 0 or currentMoney < upgradeCost then
 		updateUpgradeDisplay(state)
 		upgradeInFlightByPlayer[player] = nil
 		return
 	end
 
 	DataManager.UpdateMoney(player, -upgradeCost)
-	state.ratePerSecond = math.ceil(state.ratePerSecond * 1.10) -- TODO: Make this configurable
+	state.ratePerSecond = math.ceil(state.ratePerSecond * 1.10)
+	state.upgradePrice = math.ceil(upgradeCost * 1.45)
 	state.brainrotLevel = math.min(MAX_BRAINROT_LEVEL, math.max(1, state.brainrotLevel) + 1)
 	refreshPlacedDisplayStats(state)
 	updateUpgradeDisplay(state)
@@ -644,6 +657,7 @@ local function buildPedestalState(plot: any, pedestalId: string, pedestalModel: 
 		placedModelName = nil,
 		brainrotLevel = 1,
 		ratePerSecond = 0,
+		upgradePrice = 0,
 		bankedMoney = 0,
 		placedDisplayModel = nil,
 		removePrompt = nil,
