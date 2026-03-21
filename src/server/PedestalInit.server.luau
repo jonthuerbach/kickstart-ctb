@@ -68,9 +68,13 @@ local function buildMetadataLookup()
 				and typeof(entry.ratePerSecond) == "number"
 			then
 				local metadata: BrainrotCatalogMetadata = {
-					displayName = if typeof(entry.name) == "string" and entry.name ~= "" then entry.name else entry.modelName,
+					displayName = if typeof(entry.name) == "string" and entry.name ~= ""
+						then entry.name
+						else entry.modelName,
 					baseRatePerSecond = entry.ratePerSecond,
-					mutation = if typeof(entry.mutation) == "string" and entry.mutation ~= "" then entry.mutation else nil,
+					mutation = if typeof(entry.mutation) == "string" and entry.mutation ~= ""
+						then entry.mutation
+						else nil,
 				}
 
 				METADATA_LOOKUP[`${entry.rarity}/{entry.modelName}`] = metadata
@@ -526,7 +530,9 @@ local function onUpgradeButtonRequested(player: Player, upgradeButtonInstance: I
 	end
 	upgradeInFlightByPlayer[player] = true
 
-	local upgradeButton = if upgradeButtonInstance and upgradeButtonInstance:IsA("GuiButton") then upgradeButtonInstance else nil
+	local upgradeButton = if upgradeButtonInstance and upgradeButtonInstance:IsA("GuiButton")
+		then upgradeButtonInstance
+		else nil
 	if not upgradeButton then
 		upgradeInFlightByPlayer[player] = nil
 		return
@@ -569,7 +575,7 @@ local function onUpgradeButtonRequested(player: Player, upgradeButtonInstance: I
 	end
 
 	DataManager.UpdateMoney(player, -upgradeCost)
-	state.ratePerSecond = math.ceil(state.ratePerSecond * 1.25)
+	state.ratePerSecond = math.ceil(state.ratePerSecond * 1.10) -- TODO: Make this configurable
 	state.brainrotLevel = math.min(MAX_BRAINROT_LEVEL, math.max(1, state.brainrotLevel) + 1)
 	refreshPlacedDisplayStats(state)
 	updateUpgradeDisplay(state)
