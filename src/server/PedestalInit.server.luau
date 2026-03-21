@@ -11,6 +11,7 @@ local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local requestPedestalUpgradeRemote = remotes:WaitForChild("RequestPedestalUpgrade") :: RemoteEvent
 
 local brainrotsRoot = ReplicatedStorage:WaitForChild("Brainrots")
+local MAX_BRAINROT_LEVEL = 100
 
 type PedestalState = {
 	plot: any,
@@ -89,13 +90,24 @@ end
 local function updateUpgradeDisplay(state: PedestalState)
 	local isOccupied = state.placedRarity ~= nil and state.placedModelName ~= nil
 	state.upgradeSurfaceGui.Enabled = isOccupied
+	state.upgradeButton.Active = isOccupied
+	state.upgradeButton.AutoButtonColor = isOccupied
 	if not isOccupied then
 		state.upgradeCostLabel.Text = ""
 		state.upgradeLevelLabel.Text = ""
 		return
 	end
 
-	local currentLevel = math.max(1, state.brainrotLevel)
+	local currentLevel = math.clamp(math.max(1, state.brainrotLevel), 1, MAX_BRAINROT_LEVEL)
+	local isMaxLevel = currentLevel >= MAX_BRAINROT_LEVEL
+	state.upgradeButton.Active = not isMaxLevel
+	state.upgradeButton.AutoButtonColor = not isMaxLevel
+	if isMaxLevel then
+		state.upgradeCostLabel.Text = ""
+		state.upgradeLevelLabel.Text = `Level {MAX_BRAINROT_LEVEL}`
+		return
+	end
+
 	local nextLevel = currentLevel + 1
 	local upgradeCost = getUpgradeCost(state.ratePerSecond)
 	state.upgradeCostLabel.Text = formatMoney(upgradeCost)
@@ -347,7 +359,7 @@ local function applyPedestalData(state: PedestalState, data: any)
 		state.placedModelName = modelName
 		local savedLevel = data.level
 		if typeof(savedLevel) == "number" and savedLevel >= 1 then
-			state.brainrotLevel = math.floor(savedLevel)
+			state.brainrotLevel = math.clamp(math.floor(savedLevel), 1, MAX_BRAINROT_LEVEL)
 		else
 			state.brainrotLevel = 1
 		end
@@ -536,6 +548,11 @@ local function onUpgradeButtonRequested(player: Player, upgradeButtonInstance: I
 		upgradeInFlightByPlayer[player] = nil
 		return
 	end
+	if math.max(1, state.brainrotLevel) >= MAX_BRAINROT_LEVEL then
+		updateUpgradeDisplay(state)
+		upgradeInFlightByPlayer[player] = nil
+		return
+	end
 
 	local profile = DataManager.Profiles[player]
 	if not profile then
@@ -553,7 +570,7 @@ local function onUpgradeButtonRequested(player: Player, upgradeButtonInstance: I
 
 	DataManager.UpdateMoney(player, -upgradeCost)
 	state.ratePerSecond = math.ceil(state.ratePerSecond * 1.25)
-	state.brainrotLevel = math.max(1, state.brainrotLevel) + 1
+	state.brainrotLevel = math.min(MAX_BRAINROT_LEVEL, math.max(1, state.brainrotLevel) + 1)
 	refreshPlacedDisplayStats(state)
 	updateUpgradeDisplay(state)
 	savePedestalData(player, state)
