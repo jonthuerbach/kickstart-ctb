@@ -1,8 +1,8 @@
 local MovementConfig = {}
 
-MovementConfig.BASE_WALK_SPEED = 32
+MovementConfig.BASE_WALK_SPEED = 24
 MovementConfig.BASE_JUMP_POWER = 50
-MovementConfig.REBIRTH_JUMP_POWER_INCREMENT = 20
+MovementConfig.REBIRTH_JUMP_POWER_INCREMENT = 15
 MovementConfig.REBIRTH_BASE_REQUIRED_SPEED = 20
 MovementConfig.REBIRTH_REQUIRED_SPEED_MULTIPLIER = 1.5
 
