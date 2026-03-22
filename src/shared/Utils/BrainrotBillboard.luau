@@ -1,4 +1,5 @@
 local DEFAULT_RARITY_COLOR = Color3.fromRGB(255, 255, 255)
+local NumberFormatter = require(script.Parent.NumberFormatter)
 
 local rarityColors: { [string]: Color3 } = {
 	Common = Color3.fromRGB(220, 220, 220),
@@ -105,7 +106,7 @@ function BrainrotBillboard.CreateFromAttributes(model: Model, options: CreateOpt
 
 	local displayText = if typeof(displayNameAttr) == "string" then displayNameAttr else "Unknown"
 	local rarityText = if typeof(rarityAttr) == "string" then rarityAttr else "Unknown"
-	local rateText = if typeof(ratePerSecondAttr) == "number" then tostring(ratePerSecondAttr) else "?"
+	local rateText = if typeof(ratePerSecondAttr) == "number" then NumberFormatter.FormatCompact(ratePerSecondAttr) else "?"
 	local rarityColor = getRarityColor(rarityText)
 
 	local size = if options and options.size then options.size else profile.size
