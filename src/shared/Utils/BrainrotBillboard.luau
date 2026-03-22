@@ -69,8 +69,9 @@ local function buildLabel(container: Instance, name: string, text: string, color
 
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = Color3.new(0, 0, 0)
+	stroke.LineJoinMode = Enum.LineJoinMode.Bevel
 	stroke.StrokeSizingMode = Enum.StrokeSizingMode.ScaledSize
-	stroke.Thickness = 0.02
+	stroke.Thickness = 0.12
 	stroke.Parent = label
 
 	return label
@@ -106,7 +107,9 @@ function BrainrotBillboard.CreateFromAttributes(model: Model, options: CreateOpt
 
 	local displayText = if typeof(displayNameAttr) == "string" then displayNameAttr else "Unknown"
 	local rarityText = if typeof(rarityAttr) == "string" then rarityAttr else "Unknown"
-	local rateText = if typeof(ratePerSecondAttr) == "number" then NumberFormatter.FormatCompact(ratePerSecondAttr) else "?"
+	local rateText = if typeof(ratePerSecondAttr) == "number"
+		then NumberFormatter.FormatCompact(ratePerSecondAttr)
+		else "?"
 	local rarityColor = getRarityColor(rarityText)
 
 	local size = if options and options.size then options.size else profile.size
@@ -142,7 +145,8 @@ function BrainrotBillboard.CreateFromAttributes(model: Model, options: CreateOpt
 	local shouldShowCountdown = options ~= nil and options.showDespawnCountdown == true
 	local lifetimeSeconds = if options then options.lifetimeSeconds else nil
 	if shouldShowCountdown and typeof(lifetimeSeconds) == "number" and lifetimeSeconds > 0 then
-		countdownLabel = buildLabel(container, "DespawnCountdown", `${lifetimeSeconds}s`, Color3.fromRGB(255, 255, 0), 0.16)
+		countdownLabel =
+			buildLabel(container, "DespawnCountdown", `${lifetimeSeconds}s`, Color3.fromRGB(255, 255, 0), 0.16)
 	end
 
 	buildLabel(container, "DisplayName", displayText, Color3.fromRGB(255, 255, 255), 0.25)

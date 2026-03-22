@@ -176,6 +176,12 @@ local function resolveLeaderboardView(spec: LeaderboardSpec): LeaderboardView?
 
 	playerFrame.Visible = false
 
+	if screenFrame:IsA("ScrollingFrame") then
+		-- Keep the scrollbar range matched to generated leaderboard rows.
+		screenFrame.AutomaticCanvasSize = Enum.AutomaticSize.Y
+		screenFrame.CanvasSize = UDim2.fromOffset(0, 0)
+	end
+
 	return {
 		modelName = spec.modelName,
 		entryTemplate = playerFrame,
