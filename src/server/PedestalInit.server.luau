@@ -537,7 +537,7 @@ local function onCollectButtonTouched(state: PedestalState, hit: BasePart)
 	updateMoneyLabel(state)
 	DataManager.UpdateMoney(player, payout)
 	savePedestalData(player, state)
-	pedestalCollectSfxRemote:FireClient(player)
+	pedestalCollectSfxRemote:FireClient(player, state.placedDisplayModel, state.brainrotAttachment.WorldCFrame)
 end
 
 local function onUpgradeButtonRequested(player: Player, upgradeButtonInstance: Instance?)
