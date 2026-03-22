@@ -149,6 +149,12 @@ function BrainrotBillboard.CreateFromAttributes(model: Model, options: CreateOpt
 			buildLabel(container, "DespawnCountdown", `${lifetimeSeconds}s`, Color3.fromRGB(255, 255, 0), 0.16)
 	end
 
+	if variant == "Pedestal" then
+		local levelAttr = model:GetAttribute("Level")
+		local levelText = if typeof(levelAttr) == "number" then `Level: {levelAttr}` else "?"
+		buildLabel(container, "Level", levelText, Color3.fromRGB(255, 255, 0), 0.16)
+	end
+
 	buildLabel(container, "DisplayName", displayText, Color3.fromRGB(255, 255, 255), 0.25)
 	buildLabel(container, "Rarity", rarityText, rarityColor, 0.16)
 	buildLabel(container, "Rate", `${rateText}/s`, Color3.fromRGB(0, 255, 0), 0.25)
