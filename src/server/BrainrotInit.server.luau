@@ -4,6 +4,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local BrainrotCatalog = require(ReplicatedStorage.Shared.Catalogs.BrainrotCatalog)
 local BrainrotBillboard = require(ReplicatedStorage.Shared.Utils.BrainrotBillboard)
 local BrainrotToolManager = require(ReplicatedStorage.Shared.Managers.BrainrotToolManager)
+local TutorialManager = require(ReplicatedStorage.Shared.Managers.TutorialManager)
 
 local spinnersFolder = workspace:WaitForChild("Spinners")
 local brainrotsRoot = ReplicatedStorage:WaitForChild("Brainrots")
@@ -367,6 +368,7 @@ local function spawnBrainrotForSpinnerTop(spinnerTop: Model)
 
 			if typeof(pickedModelName) == "string" and typeof(pickedRarity) == "string" then
 				attachBrainrotAboveHead(player, pickedModelName, pickedRarity)
+				TutorialManager.OnBrainrotPickedUp(player)
 			else
 				warn("[BrainrotInit] Picked brainrot was missing model metadata")
 			end

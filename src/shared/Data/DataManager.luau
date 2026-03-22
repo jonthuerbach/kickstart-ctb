@@ -41,6 +41,23 @@ local function ensureMovementRoot(profileData: { [string]: any }): { [string]: a
 	return movement :: { [string]: any }
 end
 
+local function ensureTutorialRoot(profileData: { [string]: any }): { [string]: any }
+	local tutorial = profileData.Tutorial
+	if typeof(tutorial) ~= "table" then
+		tutorial = {}
+		profileData.Tutorial = tutorial
+	end
+
+	if typeof(tutorial.Step) ~= "number" then
+		tutorial.Step = 0
+	end
+	if typeof(tutorial.Completed) ~= "boolean" then
+		tutorial.Completed = false
+	end
+
+	return tutorial :: { [string]: any }
+end
+
 local function pushMoneyToClient(player: Player, money: number)
 	local leaderstats = player:WaitForChild("leaderstats")
 	if not leaderstats then
@@ -221,6 +238,58 @@ function DataManager.SetJumpLevel(player: Player, jumpLevel: number)
 
 	local movement = ensureMovementRoot(profile.Data)
 	movement.JumpLevel = math.max(0, math.floor(jumpLevel))
+end
+
+function DataManager.GetTutorialData(player: Player): { [string]: any }?
+	local profile = DataManager.Profiles[player]
+	if not profile then
+		return nil
+	end
+
+	return ensureTutorialRoot(profile.Data)
+end
+
+function DataManager.GetTutorialStep(player: Player): number
+	local tutorial = DataManager.GetTutorialData(player)
+	if not tutorial then
+		return 0
+	end
+
+	local step = tutorial.Step
+	if typeof(step) ~= "number" then
+		return 0
+	end
+
+	return math.max(0, math.floor(step))
+end
+
+function DataManager.SetTutorialStep(player: Player, step: number)
+	local profile = DataManager.Profiles[player]
+	if not profile then
+		return
+	end
+
+	local tutorial = ensureTutorialRoot(profile.Data)
+	tutorial.Step = math.max(0, math.floor(step))
+end
+
+function DataManager.IsTutorialCompleted(player: Player): boolean
+	local tutorial = DataManager.GetTutorialData(player)
+	if not tutorial then
+		return false
+	end
+
+	return tutorial.Completed == true
+end
+
+function DataManager.SetTutorialCompleted(player: Player, completed: boolean)
+	local profile = DataManager.Profiles[player]
+	if not profile then
+		return
+	end
+
+	local tutorial = ensureTutorialRoot(profile.Data)
+	tutorial.Completed = completed == true
 end
 
 return DataManager

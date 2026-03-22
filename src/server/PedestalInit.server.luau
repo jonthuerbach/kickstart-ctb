@@ -7,6 +7,7 @@ local BrainrotToolManager = require(ReplicatedStorage.Shared.Managers.BrainrotTo
 local BrainrotCatalog = require(ReplicatedStorage.Shared.Catalogs.BrainrotCatalog)
 local BrainrotBillboard = require(ReplicatedStorage.Shared.Utils.BrainrotBillboard)
 local NumberFormatter = require(ReplicatedStorage.Shared.Utils.NumberFormatter)
+local TutorialManager = require(ReplicatedStorage.Shared.Managers.TutorialManager)
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local requestPedestalUpgradeRemote = remotes:WaitForChild("RequestPedestalUpgrade") :: RemoteEvent
 
@@ -501,6 +502,7 @@ local function onPlacePromptTriggered(state: PedestalState, player: Player)
 	updateUpgradeDisplay(state)
 
 	savePedestalData(player, state)
+	TutorialManager.OnPedestalPlaced(player, state.pedestalId)
 end
 
 local function onCollectButtonTouched(state: PedestalState, hit: BasePart)

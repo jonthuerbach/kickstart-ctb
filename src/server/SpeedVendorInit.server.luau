@@ -4,6 +4,7 @@ local Workspace = game:GetService("Workspace")
 
 local DataManager = require(ReplicatedStorage.Shared.Data.DataManager)
 local MovementConfig = require(ReplicatedStorage.Shared.Configs.MovementConfig)
+local TutorialManager = require(ReplicatedStorage.Shared.Managers.TutorialManager)
 
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local speedVendorStateRemote = remotes:WaitForChild("SpeedVendorState") :: RemoteEvent
@@ -118,6 +119,7 @@ requestSpeedUpgradeRemote.OnServerEvent:Connect(function(player: Player, request
 	DataManager.SetSpeedLevel(player, upgradedSpeedLevel)
 	updateSpeedDisplay(player, upgradedSpeedLevel)
 	applyCurrentSpeedToCharacter(player)
+	TutorialManager.OnSpeedLevelIncreased(player, speedLevel, upgradedSpeedLevel)
 	sendState(player)
 
 	purchaseInFlight[player] = nil
