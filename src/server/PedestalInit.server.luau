@@ -10,6 +10,7 @@ local NumberFormatter = require(ReplicatedStorage.Shared.Utils.NumberFormatter)
 local TutorialManager = require(ReplicatedStorage.Shared.Managers.TutorialManager)
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local requestPedestalUpgradeRemote = remotes:WaitForChild("RequestPedestalUpgrade") :: RemoteEvent
+local pedestalCollectSfxRemote = remotes:WaitForChild("PedestalCollectSfx") :: RemoteEvent
 
 local brainrotsRoot = ReplicatedStorage:WaitForChild("Brainrots")
 local MAX_BRAINROT_LEVEL = 100
@@ -536,6 +537,7 @@ local function onCollectButtonTouched(state: PedestalState, hit: BasePart)
 	updateMoneyLabel(state)
 	DataManager.UpdateMoney(player, payout)
 	savePedestalData(player, state)
+	pedestalCollectSfxRemote:FireClient(player)
 end
 
 local function onUpgradeButtonRequested(player: Player, upgradeButtonInstance: Instance?)

@@ -132,3 +132,10 @@ if not requestPedestalUpgrade then
 	requestPedestalUpgrade.Name = "RequestPedestalUpgrade"
 	requestPedestalUpgrade.Parent = remotes
 end
+
+local pedestalCollectSfx = remotes:FindFirstChild("PedestalCollectSfx")
+if not pedestalCollectSfx then
+	pedestalCollectSfx = Instance.new("RemoteEvent")
+	pedestalCollectSfx.Name = "PedestalCollectSfx"
+	pedestalCollectSfx.Parent = remotes
+end
