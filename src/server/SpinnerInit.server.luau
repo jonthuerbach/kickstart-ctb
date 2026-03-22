@@ -5,6 +5,7 @@ local spinnerTemplatesFolder = ReplicatedStorage:WaitForChild("Templates"):WaitF
 local defaultSpinnerTemplateName = "SpinnerTemplate_1"
 local spinnerAttachmentsFolder = workspace:WaitForChild("World"):WaitForChild("Spinners")
 local LAST_SPINNER_BRAINROT_TYPE = "Mythic"
+local SPINNER_ROW_YAW_OFFSET_DEGREES = 15
 
 local fixedRotation = CFrame.Angles(0, 0, math.rad(90))
 
@@ -112,6 +113,7 @@ for attachmentIndex, spinnerAttachment in ipairs(spinnerAttachments) do
 	for i = 1, stacks do
 		local spinnerClone = spinnerTemplate:Clone()
 		local trunk = spinnerClone:WaitForChild("SpinnerTrunk")
+		local rowYawOffset = math.rad((i - 1) * SPINNER_ROW_YAW_OFFSET_DEGREES)
 
 		local randomSpeed = math.random(minSpeed, maxSpeed) -- degrees/sec
 		local directionMultiplier = (i % 2 == 1) and 1 or -1 -- bottom layer (i=1) stays current direction, then alternates
@@ -125,7 +127,7 @@ for attachmentIndex, spinnerAttachment in ipairs(spinnerAttachments) do
 			or BrickColor.new("Bright red").Color
 		spinnerClone.SpinnerBranch.Color = i % 2 == 0 and Color3.fromRGB(227, 227, 227)
 			or BrickColor.new("Bright red").Color
-		spinnerClone:PivotTo(CFrame.new(currentPosition) * fixedRotation)
+		spinnerClone:PivotTo(CFrame.new(currentPosition) * CFrame.Angles(0, rowYawOffset, 0) * fixedRotation)
 
 		local branch = spinnerClone:FindFirstChild("SpinnerBranch")
 		local branchOffset: CFrame? = nil
@@ -145,7 +147,7 @@ for attachmentIndex, spinnerAttachment in ipairs(spinnerAttachments) do
 			branch = if branch and branch:IsA("BasePart") then branch else nil,
 			branchOffset = branchOffset,
 			position = trunk.Position,
-			angle = 0,
+			angle = rowYawOffset,
 			speed = math.rad(signedSpeed),
 		})
 
