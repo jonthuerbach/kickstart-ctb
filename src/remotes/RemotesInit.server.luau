@@ -139,3 +139,10 @@ if not pedestalCollectSfx then
 	pedestalCollectSfx.Name = "PedestalCollectSfx"
 	pedestalCollectSfx.Parent = remotes
 end
+
+local pedestalUpgradeSfx = remotes:FindFirstChild("PedestalUpgradeSfx")
+if not pedestalUpgradeSfx then
+	pedestalUpgradeSfx = Instance.new("RemoteEvent")
+	pedestalUpgradeSfx.Name = "PedestalUpgradeSfx"
+	pedestalUpgradeSfx.Parent = remotes
+end

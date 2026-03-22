@@ -1,10 +1,14 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local SoundService = game:GetService("SoundService")
 local TweenService = game:GetService("TweenService")
 local UserInputService = game:GetService("UserInputService")
 local Workspace = game:GetService("Workspace")
 
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local requestPedestalUpgradeRemote = remotes:WaitForChild("RequestPedestalUpgrade") :: RemoteEvent
+local pedestalUpgradeSfxRemote = remotes:WaitForChild("PedestalUpgradeSfx") :: RemoteEvent
+
+local PEDESTAL_UPGRADE_SOUND_ID = "rbxassetid://120891770644830"
 
 local HOVER_SCALE_MULTIPLIER = 1.1
 local PRESSED_SCALE_MULTIPLIER = 0.9
@@ -20,6 +24,14 @@ type ButtonVisualState = {
 }
 
 local observedButtons: { [GuiButton]: ButtonVisualState } = {}
+
+local upgradeSound = Instance.new("Sound")
+upgradeSound.Name = "PedestalUpgradeSfx"
+upgradeSound.SoundId = PEDESTAL_UPGRADE_SOUND_ID
+upgradeSound.Volume = 1
+upgradeSound.PlaybackSpeed = 1
+upgradeSound.Looped = false
+upgradeSound.Parent = SoundService
 
 local function getOrCreateButtonScale(button: GuiButton): UIScale
 	local existingScale = button:FindFirstChildOfClass("UIScale")
@@ -117,4 +129,12 @@ Workspace.DescendantAdded:Connect(function(descendant: Instance)
 	if descendant:IsA("GuiButton") and descendant:GetAttribute("IsPedestalUpgradeButton") == true then
 		observeUpgradeButton(descendant)
 	end
+end)
+
+pedestalUpgradeSfxRemote.OnClientEvent:Connect(function()
+	if upgradeSound.IsPlaying then
+		upgradeSound:Stop()
+	end
+
+	upgradeSound:Play()
 end)

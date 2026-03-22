@@ -11,6 +11,7 @@ local TutorialManager = require(ReplicatedStorage.Shared.Managers.TutorialManage
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local requestPedestalUpgradeRemote = remotes:WaitForChild("RequestPedestalUpgrade") :: RemoteEvent
 local pedestalCollectSfxRemote = remotes:WaitForChild("PedestalCollectSfx") :: RemoteEvent
+local pedestalUpgradeSfxRemote = remotes:WaitForChild("PedestalUpgradeSfx") :: RemoteEvent
 
 local brainrotsRoot = ReplicatedStorage:WaitForChild("Brainrots")
 local MAX_BRAINROT_LEVEL = 100
@@ -597,6 +598,7 @@ local function onUpgradeButtonRequested(player: Player, upgradeButtonInstance: I
 	refreshPlacedDisplayStats(state)
 	updateUpgradeDisplay(state)
 	savePedestalData(player, state)
+	pedestalUpgradeSfxRemote:FireClient(player)
 
 	upgradeInFlightByPlayer[player] = nil
 end
