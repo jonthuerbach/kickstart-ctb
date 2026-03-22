@@ -12,7 +12,7 @@ local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local mythicSpawnedRemote = remotes:WaitForChild("MythicSpawned") :: RemoteEvent
 
 local BRAINROT_LIFETIME_SECONDS = 60
-local BRAINROT_RESPAWN_DELAY_SECONDS = 30
+local BRAINROT_RESPAWN_DELAY_SECONDS = 5
 local MYTHIC_SPAWN_INTERVAL_SECONDS = 5 * 60
 local MYTHIC_LIFETIME_SECONDS = 4 * 60
 local HELD_BRAINROT_MODEL_ATTRIBUTE = "HeldBrainrotModelName"
