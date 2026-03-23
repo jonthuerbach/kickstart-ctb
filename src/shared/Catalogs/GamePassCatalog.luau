@@ -1,7 +1,7 @@
 local GamePassCatalog = {}
 
 GamePassCatalog.Names = {
-	VIP = "1502122570",
+	VIP = "1764317066",
 	-- GOLD_X2 = "1439757298",
 }
 
@@ -10,7 +10,7 @@ function GamePassCatalog.GetGamePassId(name: string)
 end
 
 GamePassCatalog.Functions = {
-	["1502122570"] = function(player: Player)
+	["1764317066"] = function(player: Player)
 		print("VIP purchased")
 	end,
 
