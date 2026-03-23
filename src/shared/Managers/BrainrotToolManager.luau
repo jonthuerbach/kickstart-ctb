@@ -10,11 +10,18 @@ local brainrotToolsRoot = ReplicatedStorage:WaitForChild("BrainrotTools")
 local BRAINROT_TOOL_ATTRIBUTE = "IsBrainrotTool"
 local BRAINROT_TOOL_RARITY_ATTRIBUTE = "BrainrotRarity"
 local BRAINROT_TOOL_MODEL_ATTRIBUTE = "BrainrotModelName"
+local BRAINROT_TOOL_LEVEL_ATTRIBUTE = "BrainrotLevel"
 
-local function tagTool(tool: Tool, rarity: string, modelName: string)
+local function tagTool(tool: Tool, rarity: string, modelName: string, level: number?)
 	tool:SetAttribute(BRAINROT_TOOL_ATTRIBUTE, true)
 	tool:SetAttribute(BRAINROT_TOOL_RARITY_ATTRIBUTE, rarity)
 	tool:SetAttribute(BRAINROT_TOOL_MODEL_ATTRIBUTE, modelName)
+
+	if typeof(level) == "number" then
+		tool:SetAttribute(BRAINROT_TOOL_LEVEL_ATTRIBUTE, math.max(1, math.floor(level)))
+	else
+		tool:SetAttribute(BRAINROT_TOOL_LEVEL_ATTRIBUTE, nil)
+	end
 end
 
 local function isTaggedBrainrotTool(instance: Instance): boolean
@@ -62,18 +69,24 @@ function BrainrotToolManager.AssertToolTemplate(rarity: string, modelName: strin
 	return template :: Tool
 end
 
-function BrainrotToolManager.GrantToolInstance(player: Player, rarity: string, modelName: string, autoEquip: boolean?): Tool
+function BrainrotToolManager.GrantToolInstance(
+	player: Player,
+	rarity: string,
+	modelName: string,
+	autoEquip: boolean?,
+	level: number?
+): Tool
 	local template = BrainrotToolManager.AssertToolTemplate(rarity, modelName)
 
 	local backpack = player:WaitForChild("Backpack")
 	local starterGear = player:WaitForChild("StarterGear")
 
 	local backpackTool = template:Clone()
-	tagTool(backpackTool, rarity, modelName)
+	tagTool(backpackTool, rarity, modelName, level)
 	backpackTool.Parent = backpack
 
 	local starterTool = template:Clone()
-	tagTool(starterTool, rarity, modelName)
+	tagTool(starterTool, rarity, modelName, level)
 	starterTool.Parent = starterGear
 
 	if autoEquip then
@@ -87,7 +100,13 @@ function BrainrotToolManager.GrantToolInstance(player: Player, rarity: string, m
 	return backpackTool
 end
 
-function BrainrotToolManager.AddOwnedTool(player: Player, rarity: string, modelName: string, autoEquip: boolean?): number
+function BrainrotToolManager.AddOwnedTool(
+	player: Player,
+	rarity: string,
+	modelName: string,
+	autoEquip: boolean?,
+	level: number?
+): number
 	BrainrotToolManager.AssertToolTemplate(rarity, modelName)
 
 	local updatedCount = DataManager.AddBrainrotTool(player, rarity, modelName, 1)
@@ -96,7 +115,7 @@ function BrainrotToolManager.AddOwnedTool(player: Player, rarity: string, modelN
 		return updatedCount
 	end
 
-	BrainrotToolManager.GrantToolInstance(player, rarity, modelName, autoEquip)
+	BrainrotToolManager.GrantToolInstance(player, rarity, modelName, autoEquip, level)
 	return updatedCount
 end
 
@@ -118,6 +137,15 @@ function BrainrotToolManager.GetToolMetadata(tool: Tool): (string?, string?)
 	end
 
 	return rarity, modelName
+end
+
+function BrainrotToolManager.GetToolLevel(tool: Tool): number?
+	local level = tool:GetAttribute(BRAINROT_TOOL_LEVEL_ATTRIBUTE)
+	if typeof(level) ~= "number" then
+		return nil
+	end
+
+	return math.max(1, math.floor(level))
 end
 
 function BrainrotToolManager.RestoreOwnedTools(player: Player)

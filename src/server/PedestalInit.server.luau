@@ -105,6 +105,18 @@ local function getInitialUpgradePrice(ratePerSecond: number): number
 	return math.ceil(math.max(0, ratePerSecond) * 1.45)
 end
 
+local function getUpgradeStatsForLevel(baseRatePerSecond: number, level: number): (number, number)
+	local targetLevel = math.clamp(math.max(1, math.floor(level)), 1, MAX_BRAINROT_LEVEL)
+	local currentRatePerSecond = math.max(1, math.floor(baseRatePerSecond))
+	local currentUpgradePrice = getInitialUpgradePrice(currentRatePerSecond)
+	for _ = 2, targetLevel do
+		currentRatePerSecond = math.ceil(currentRatePerSecond * 1.15)
+		currentUpgradePrice = math.ceil(currentUpgradePrice * 1.45)
+	end
+
+	return currentRatePerSecond, currentUpgradePrice
+end
+
 local function updateUpgradeDisplay(state: PedestalState)
 	local isOccupied = state.placedRarity ~= nil and state.placedModelName ~= nil
 	state.upgradeSurfaceGui.Enabled = isOccupied
@@ -244,7 +256,7 @@ local function onRemovePromptTriggered(state: PedestalState, player: Player)
 
 	BrainrotToolManager.AssertToolTemplate(rarity, modelName)
 
-	local updatedCount = BrainrotToolManager.AddOwnedTool(player, rarity, modelName, true)
+	local updatedCount = BrainrotToolManager.AddOwnedTool(player, rarity, modelName, true, state.brainrotLevel)
 	if updatedCount <= 0 then
 		return
 	end
@@ -481,13 +493,19 @@ local function onPlacePromptTriggered(state: PedestalState, player: Player)
 	if not placingRarity or not placingModelName then
 		return
 	end
+	local placingLevel = BrainrotToolManager.GetToolLevel(equippedTool)
+	local resolvedPlacingLevel = if typeof(placingLevel) == "number"
+		then math.clamp(math.floor(placingLevel), 1, MAX_BRAINROT_LEVEL)
+		else 1
 
 	BrainrotToolManager.AssertToolTemplate(placingRarity, placingModelName)
 	getBrainrotDisplayTemplate(placingRarity, placingModelName)
-	local placingRate = getRatePerSecond(placingRarity, placingModelName)
+	local basePlacingRate = getRatePerSecond(placingRarity, placingModelName)
+	local placingRate, placingUpgradePrice = getUpgradeStatsForLevel(basePlacingRate, resolvedPlacingLevel)
 
 	local replacedRarity = state.placedRarity
 	local replacedModelName = state.placedModelName
+	local replacedLevel = state.brainrotLevel
 	if replacedRarity and replacedModelName then
 		BrainrotToolManager.AssertToolTemplate(replacedRarity, replacedModelName)
 	end
@@ -500,14 +518,14 @@ local function onPlacePromptTriggered(state: PedestalState, player: Player)
 	equippedTool:Destroy()
 
 	if replacedRarity and replacedModelName then
-		BrainrotToolManager.AddOwnedTool(player, replacedRarity, replacedModelName, false)
+		BrainrotToolManager.AddOwnedTool(player, replacedRarity, replacedModelName, false, replacedLevel)
 	end
 
 	state.placedRarity = placingRarity
 	state.placedModelName = placingModelName
-	state.brainrotLevel = 1
+	state.brainrotLevel = resolvedPlacingLevel
 	state.ratePerSecond = placingRate
-	state.upgradePrice = getInitialUpgradePrice(placingRate)
+	state.upgradePrice = placingUpgradePrice
 	state.suppressUnoccupiedMoneyDisplay = false
 	spawnPlacedDisplay(state, placingRarity, placingModelName)
 	updateMoneyLabel(state)
