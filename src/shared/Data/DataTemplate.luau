@@ -2,6 +2,7 @@ return {
 	Money = 0,
 
 	BrainrotTools = {},
+	BrainrotToolLevels = {},
 	Pedestals = {},
 	Movement = {
 		SpeedLevel = 0,

@@ -510,7 +510,7 @@ local function onPlacePromptTriggered(state: PedestalState, player: Player)
 		BrainrotToolManager.AssertToolTemplate(replacedRarity, replacedModelName)
 	end
 
-	local updatedCount = BrainrotToolManager.ConsumeOwnedTool(player, placingRarity, placingModelName)
+	local updatedCount = BrainrotToolManager.ConsumeOwnedTool(player, placingRarity, placingModelName, resolvedPlacingLevel)
 	if updatedCount < 0 then
 		return
 	end

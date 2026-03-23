@@ -40,10 +40,13 @@ local function removeTaggedTools(parent: Instance?)
 	end
 end
 
-local function removeOneMatchingTaggedTool(parent: Instance?, rarity: string, modelName: string)
+local function removeOneMatchingTaggedTool(parent: Instance?, rarity: string, modelName: string, level: number?)
 	if not parent then
 		return
 	end
+
+	local fallbackMatchingTool: Tool? = nil
+	local normalizedLevel = if typeof(level) == "number" then math.max(1, math.floor(level)) else nil
 
 	for _, child in parent:GetChildren() do
 		if
@@ -52,9 +55,26 @@ local function removeOneMatchingTaggedTool(parent: Instance?, rarity: string, mo
 			and child:GetAttribute(BRAINROT_TOOL_RARITY_ATTRIBUTE) == rarity
 			and child:GetAttribute(BRAINROT_TOOL_MODEL_ATTRIBUTE) == modelName
 		then
-			child:Destroy()
-			return
+			if normalizedLevel == nil then
+				child:Destroy()
+				return
+			end
+
+			local childLevel = child:GetAttribute(BRAINROT_TOOL_LEVEL_ATTRIBUTE)
+			if typeof(childLevel) == "number" and math.max(1, math.floor(childLevel)) == normalizedLevel then
+				child:Destroy()
+				return
+			end
+
+			if fallbackMatchingTool == nil then
+				fallbackMatchingTool = child
+			end
 		end
+	end
+
+	if fallbackMatchingTool then
+		fallbackMatchingTool:Destroy()
+		return
 	end
 end
 
@@ -109,7 +129,7 @@ function BrainrotToolManager.AddOwnedTool(
 ): number
 	BrainrotToolManager.AssertToolTemplate(rarity, modelName)
 
-	local updatedCount = DataManager.AddBrainrotTool(player, rarity, modelName, 1)
+	local updatedCount = DataManager.AddBrainrotTool(player, rarity, modelName, 1, level)
 	if updatedCount <= 0 then
 		warn(`[BrainrotToolManager] Could not persist tool ownership for {player.Name}: {rarity}/{modelName}`)
 		return updatedCount
@@ -119,13 +139,13 @@ function BrainrotToolManager.AddOwnedTool(
 	return updatedCount
 end
 
-function BrainrotToolManager.ConsumeOwnedTool(player: Player, rarity: string, modelName: string): number
-	local updatedCount = DataManager.RemoveBrainrotTool(player, rarity, modelName, 1)
+function BrainrotToolManager.ConsumeOwnedTool(player: Player, rarity: string, modelName: string, level: number?): number
+	local updatedCount = DataManager.RemoveBrainrotTool(player, rarity, modelName, 1, level)
 	if updatedCount < 0 then
 		return updatedCount
 	end
 
-	removeOneMatchingTaggedTool(player.StarterGear, rarity, modelName)
+	removeOneMatchingTaggedTool(player.StarterGear, rarity, modelName, level)
 	return updatedCount
 end
 
@@ -153,6 +173,7 @@ function BrainrotToolManager.RestoreOwnedTools(player: Player)
 	if not toolsData then
 		return
 	end
+	local toolLevelsData = DataManager.GetBrainrotToolLevelsData(player)
 
 	local backpack = player:WaitForChild("Backpack")
 	local starterGear = player:WaitForChild("StarterGear")
@@ -171,8 +192,23 @@ function BrainrotToolManager.RestoreOwnedTools(player: Player)
 				continue
 			end
 
-			for _ = 1, count do
-				BrainrotToolManager.GrantToolInstance(player, rarity, modelName, false)
+			local modelLevels = nil
+			if typeof(toolLevelsData) == "table" then
+				local rarityLevelInventory = toolLevelsData[rarity]
+				if typeof(rarityLevelInventory) == "table" then
+					local candidateModelLevels = rarityLevelInventory[modelName]
+					if typeof(candidateModelLevels) == "table" then
+						modelLevels = candidateModelLevels
+					end
+				end
+			end
+
+			for index = 1, count do
+				local level = nil
+				if modelLevels and typeof(modelLevels[index]) == "number" then
+					level = math.max(1, math.floor(modelLevels[index]))
+				end
+				BrainrotToolManager.GrantToolInstance(player, rarity, modelName, false, level)
 			end
 		end
 	end

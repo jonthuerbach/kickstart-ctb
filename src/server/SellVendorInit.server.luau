@@ -98,8 +98,10 @@ local function payoutAndSellOne(player: Player)
 		warn(`[SellVendorInit] Could not resolve metadata for equipped tool {heldBrainrot.Name}`)
 		return
 	end
+	local heldLevel = BrainrotToolManager.GetToolLevel(heldBrainrot)
+	local resolvedHeldLevel = if typeof(heldLevel) == "number" then math.max(1, math.floor(heldLevel)) else 1
 
-	local updatedCount = DataManager.RemoveBrainrotTool(player, rarity, modelName, 1)
+	local updatedCount = DataManager.RemoveBrainrotTool(player, rarity, modelName, 1, resolvedHeldLevel)
 	if updatedCount < 0 then
 		warn(`[SellVendorInit] Could not persist sell_one for {player.Name}: {rarity}/{modelName}`)
 		return

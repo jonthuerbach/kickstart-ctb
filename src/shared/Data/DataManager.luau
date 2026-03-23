@@ -14,6 +14,44 @@ local function ensureBrainrotToolsRoot(profileData: { [string]: any }): { [strin
 	return brainrotTools :: { [string]: { [string]: number } }
 end
 
+local function ensureBrainrotToolLevelsRoot(profileData: { [string]: any }): { [string]: { [string]: { number } } }
+	local brainrotToolLevels = profileData.BrainrotToolLevels
+	if typeof(brainrotToolLevels) ~= "table" then
+		brainrotToolLevels = {}
+		profileData.BrainrotToolLevels = brainrotToolLevels
+	end
+
+	return brainrotToolLevels :: { [string]: { [string]: { number } } }
+end
+
+local function ensureRarityLevelInventory(
+	brainrotToolLevels: { [string]: { [string]: { number } } },
+	rarity: string
+): { [string]: { number } }
+	local rarityLevels = brainrotToolLevels[rarity]
+	if typeof(rarityLevels) ~= "table" then
+		rarityLevels = {}
+		brainrotToolLevels[rarity] = rarityLevels
+	end
+
+	return rarityLevels
+end
+
+local function ensureModelLevelInventory(
+	brainrotToolLevels: { [string]: { [string]: { number } } },
+	rarity: string,
+	modelName: string
+): { number }
+	local rarityLevels = ensureRarityLevelInventory(brainrotToolLevels, rarity)
+	local modelLevels = rarityLevels[modelName]
+	if typeof(modelLevels) ~= "table" then
+		modelLevels = {}
+		rarityLevels[modelName] = modelLevels
+	end
+
+	return modelLevels
+end
+
 local function ensurePedestalsRoot(profileData: { [string]: any }): { [string]: any }
 	local pedestals = profileData.Pedestals
 	if typeof(pedestals) ~= "table" then
@@ -109,7 +147,7 @@ function DataManager.SetMoney(player: Player, money: number)
 	pushMoneyToClient(player, normalizedMoney)
 end
 
-function DataManager.AddBrainrotTool(player: Player, rarity: string, modelName: string, amount: number?): number
+function DataManager.AddBrainrotTool(player: Player, rarity: string, modelName: string, amount: number?, level: number?): number
 	local profile = DataManager.Profiles[player]
 	if not profile then
 		return 0
@@ -134,10 +172,24 @@ function DataManager.AddBrainrotTool(player: Player, rarity: string, modelName: 
 
 	local updatedCount = currentCount + delta
 	rarityInventory[modelName] = updatedCount
+
+	local brainrotToolLevels = ensureBrainrotToolLevelsRoot(profile.Data)
+	local modelLevels = ensureModelLevelInventory(brainrotToolLevels, rarity, modelName)
+	local normalizedLevel = if typeof(level) == "number" then math.max(1, math.floor(level)) else 1
+	for _ = 1, delta do
+		table.insert(modelLevels, normalizedLevel)
+	end
+
 	return updatedCount
 end
 
-function DataManager.RemoveBrainrotTool(player: Player, rarity: string, modelName: string, amount: number?): number
+function DataManager.RemoveBrainrotTool(
+	player: Player,
+	rarity: string,
+	modelName: string,
+	amount: number?,
+	preferredLevel: number?
+): number
 	local profile = DataManager.Profiles[player]
 	if not profile then
 		return -1
@@ -169,6 +221,42 @@ function DataManager.RemoveBrainrotTool(player: Player, rarity: string, modelNam
 		rarityInventory[modelName] = updatedCount
 	end
 
+	local brainrotToolLevels = ensureBrainrotToolLevelsRoot(profile.Data)
+	local rarityLevels = brainrotToolLevels[rarity]
+	local modelLevels = if typeof(rarityLevels) == "table" then rarityLevels[modelName] else nil
+	if typeof(modelLevels) == "table" then
+		local removalsRemaining = delta
+		local normalizedPreferredLevel = if typeof(preferredLevel) == "number"
+			then math.max(1, math.floor(preferredLevel))
+			else nil
+
+		if normalizedPreferredLevel ~= nil then
+			for index = #modelLevels, 1, -1 do
+				if removalsRemaining <= 0 then
+					break
+				end
+
+				local candidateLevel = modelLevels[index]
+				if typeof(candidateLevel) == "number" and math.max(1, math.floor(candidateLevel)) == normalizedPreferredLevel then
+					table.remove(modelLevels, index)
+					removalsRemaining -= 1
+				end
+			end
+		end
+
+		while removalsRemaining > 0 and #modelLevels > 0 do
+			table.remove(modelLevels, #modelLevels)
+			removalsRemaining -= 1
+		end
+
+		if #modelLevels == 0 then
+			rarityLevels[modelName] = nil
+			if next(rarityLevels) == nil then
+				brainrotToolLevels[rarity] = nil
+			end
+		end
+	end
+
 	return updatedCount
 end
 
@@ -179,6 +267,15 @@ function DataManager.GetBrainrotToolsData(player: Player): { [string]: { [string
 	end
 
 	return ensureBrainrotToolsRoot(profile.Data)
+end
+
+function DataManager.GetBrainrotToolLevelsData(player: Player): { [string]: { [string]: { number } } }?
+	local profile = DataManager.Profiles[player]
+	if not profile then
+		return nil
+	end
+
+	return ensureBrainrotToolLevelsRoot(profile.Data)
 end
 
 function DataManager.GetPedestalsData(player: Player): { [string]: any }?

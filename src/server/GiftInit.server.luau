@@ -26,6 +26,7 @@ type PendingGiftRequest = {
 	recipient: Player,
 	rarity: string,
 	modelName: string,
+	level: number,
 	brainrotDisplayName: string,
 	resolved: boolean,
 }
@@ -133,15 +134,15 @@ local function clearActiveRequest(request: PendingGiftRequest)
 	requestByRecipient[request.recipient] = nil
 end
 
-local function restoreGiftToSenderOwnership(sender: Player, rarity: string, modelName: string)
+local function restoreGiftToSenderOwnership(sender: Player, rarity: string, modelName: string, level: number)
 	if sender.Parent == Players then
-		local updatedCount = BrainrotToolManager.AddOwnedTool(sender, rarity, modelName, false)
+		local updatedCount = BrainrotToolManager.AddOwnedTool(sender, rarity, modelName, false, level)
 		if updatedCount > 0 then
 			return
 		end
 	end
 
-	local updatedCount = DataManager.AddBrainrotTool(sender, rarity, modelName, 1)
+	local updatedCount = DataManager.AddBrainrotTool(sender, rarity, modelName, 1, level)
 	if updatedCount <= 0 then
 		warn(`[GiftInit] Failed to restore gift ownership for {sender.Name}: {rarity}/{modelName}`)
 	end
@@ -162,9 +163,9 @@ local function resolveGiftRequest(request: PendingGiftRequest, outcome: string)
 	local recipient = request.recipient
 
 	if outcome == "accepted" then
-		local updatedCount = BrainrotToolManager.AddOwnedTool(recipient, request.rarity, request.modelName, false)
+		local updatedCount = BrainrotToolManager.AddOwnedTool(recipient, request.rarity, request.modelName, false, request.level)
 		if updatedCount <= 0 then
-			restoreGiftToSenderOwnership(sender, request.rarity, request.modelName)
+			restoreGiftToSenderOwnership(sender, request.rarity, request.modelName, request.level)
 			sendStatus(sender, "Gift failed because the receiver could not receive the brainrot. It has been returned to you.")
 			sendStatus(recipient, "Gift failed. Please try again.")
 			closeGiftMenu(recipient, request.id)
@@ -180,7 +181,7 @@ local function resolveGiftRequest(request: PendingGiftRequest, outcome: string)
 		return
 	end
 
-	restoreGiftToSenderOwnership(sender, request.rarity, request.modelName)
+	restoreGiftToSenderOwnership(sender, request.rarity, request.modelName, request.level)
 	closeGiftMenu(recipient, request.id)
 
 	if outcome == "cancelled" then
@@ -255,8 +256,10 @@ local function beginGiftRequest(sender: Player, recipient: Player)
 		sendStatus(sender, "Equipped tool is not a valid brainrot gift.")
 		return
 	end
+	local equippedLevel = BrainrotToolManager.GetToolLevel(equippedTool)
+	local resolvedEquippedLevel = if typeof(equippedLevel) == "number" then math.max(1, math.floor(equippedLevel)) else 1
 
-	local updatedCount = BrainrotToolManager.ConsumeOwnedTool(sender, rarity, modelName)
+	local updatedCount = BrainrotToolManager.ConsumeOwnedTool(sender, rarity, modelName, resolvedEquippedLevel)
 	if updatedCount < 0 then
 		sendStatus(sender, "Gift failed because you no longer own that brainrot.")
 		return
@@ -272,6 +275,7 @@ local function beginGiftRequest(sender: Player, recipient: Player)
 		recipient = recipient,
 		rarity = rarity,
 		modelName = modelName,
+		level = resolvedEquippedLevel,
 		brainrotDisplayName = brainrotDisplayName,
 		resolved = false,
 	}
