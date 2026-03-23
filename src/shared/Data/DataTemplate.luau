@@ -11,9 +11,12 @@ return {
 		Step = 0,
 		Completed = false,
 	},
+	DeveloperProducts = {
+		SkipLevelCredits = 0,
+	},
 
 	GamePasses = {
-		["1502122570"] = { owned = false, awarded = false },
+		["1764317066"] = { owned = false, awarded = false },
 		-- ["1439757298"] = { owned = false, awarded = false },
 	},
 }

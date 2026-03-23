@@ -58,6 +58,23 @@ local function ensureTutorialRoot(profileData: { [string]: any }): { [string]: a
 	return tutorial :: { [string]: any }
 end
 
+local function ensureDeveloperProductsRoot(profileData: { [string]: any }): { [string]: any }
+	local developerProducts = profileData.DeveloperProducts
+	if typeof(developerProducts) ~= "table" then
+		developerProducts = {}
+		profileData.DeveloperProducts = developerProducts
+	end
+
+	local skipLevelCredits = developerProducts.SkipLevelCredits
+	if typeof(skipLevelCredits) ~= "number" then
+		developerProducts.SkipLevelCredits = 0
+	else
+		developerProducts.SkipLevelCredits = math.max(0, math.floor(skipLevelCredits))
+	end
+
+	return developerProducts :: { [string]: any }
+end
+
 local function pushMoneyToClient(player: Player, money: number)
 	local leaderstats = player:WaitForChild("leaderstats")
 	if not leaderstats then
@@ -247,6 +264,64 @@ function DataManager.GetTutorialData(player: Player): { [string]: any }?
 	end
 
 	return ensureTutorialRoot(profile.Data)
+end
+
+function DataManager.GetDeveloperProductsData(player: Player): { [string]: any }?
+	local profile = DataManager.Profiles[player]
+	if not profile then
+		return nil
+	end
+
+	return ensureDeveloperProductsRoot(profile.Data)
+end
+
+function DataManager.GetSkipLevelCredits(player: Player): number
+	local developerProducts = DataManager.GetDeveloperProductsData(player)
+	if not developerProducts then
+		return 0
+	end
+
+	local skipLevelCredits = developerProducts.SkipLevelCredits
+	if typeof(skipLevelCredits) ~= "number" then
+		return 0
+	end
+
+	return math.max(0, math.floor(skipLevelCredits))
+end
+
+function DataManager.AddSkipLevelCredits(player: Player, amount: number?): number
+	local profile = DataManager.Profiles[player]
+	if not profile then
+		return 0
+	end
+
+	local delta = if typeof(amount) == "number" then math.floor(amount) else 1
+	if delta <= 0 then
+		return DataManager.GetSkipLevelCredits(player)
+	end
+
+	local developerProducts = ensureDeveloperProductsRoot(profile.Data)
+	local currentSkipLevelCredits = developerProducts.SkipLevelCredits
+	local updatedSkipLevelCredits = currentSkipLevelCredits + delta
+	developerProducts.SkipLevelCredits = updatedSkipLevelCredits
+
+	return updatedSkipLevelCredits
+end
+
+function DataManager.ConsumeSkipLevelCredit(player: Player): boolean
+	local profile = DataManager.Profiles[player]
+	if not profile then
+		return false
+	end
+
+	local developerProducts = ensureDeveloperProductsRoot(profile.Data)
+	local currentSkipLevelCredits = developerProducts.SkipLevelCredits
+	if currentSkipLevelCredits <= 0 then
+		return false
+	end
+
+	developerProducts.SkipLevelCredits = currentSkipLevelCredits - 1
+	return true
 end
 
 function DataManager.GetTutorialStep(player: Player): number

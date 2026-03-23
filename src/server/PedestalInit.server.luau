@@ -1,10 +1,12 @@
 local Players = game:GetService("Players")
+local MarketplaceService = game:GetService("MarketplaceService")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local PlotManager = require(ReplicatedStorage.Shared.Managers.PlotManager)
 local DataManager = require(ReplicatedStorage.Shared.Data.DataManager)
 local BrainrotToolManager = require(ReplicatedStorage.Shared.Managers.BrainrotToolManager)
 local BrainrotCatalog = require(ReplicatedStorage.Shared.Catalogs.BrainrotCatalog)
+local DeveloperProductCatalog = require(ReplicatedStorage.Shared.Catalogs.DeveloperProductCatalog)
 local BrainrotBillboard = require(ReplicatedStorage.Shared.Utils.BrainrotBillboard)
 local NumberFormatter = require(ReplicatedStorage.Shared.Utils.NumberFormatter)
 local TutorialManager = require(ReplicatedStorage.Shared.Managers.TutorialManager)
@@ -15,6 +17,9 @@ local pedestalUpgradeSfxRemote = remotes:WaitForChild("PedestalUpgradeSfx") :: R
 
 local brainrotsRoot = ReplicatedStorage:WaitForChild("Brainrots")
 local MAX_BRAINROT_LEVEL = 100
+local SKIP_LEVEL_PRODUCT_ID = DeveloperProductCatalog.GetProductId("SkipLevel")
+
+assert(typeof(SKIP_LEVEL_PRODUCT_ID) == "number", "[PedestalInit] Missing SkipLevel developer product id")
 
 type PedestalState = {
 	plot: any,
@@ -49,6 +54,11 @@ local savePedestalData: (Player, PedestalState) -> ()
 local lastOwnerUserIdByPlot: { [any]: number? } = {}
 local observedPlotModels: { [Model]: boolean } = {}
 local upgradeInFlightByPlayer: { [Player]: boolean } = {}
+type PendingSkipLevelRequest = {
+	pedestalId: string,
+	upgradeButton: GuiButton,
+}
+local pendingSkipLevelRequestByPlayer: { [Player]: PendingSkipLevelRequest } = {}
 
 type BrainrotCatalogMetadata = {
 	displayName: string,
@@ -541,6 +551,58 @@ local function onCollectButtonTouched(state: PedestalState, hit: BasePart)
 	pedestalCollectSfxRemote:FireClient(player, state.placedDisplayModel, state.brainrotAttachment.WorldCFrame)
 end
 
+local function isStateUpgradeableForPlayer(state: PedestalState, player: Player): boolean
+	if state.plot.ownerUserId ~= player.UserId then
+		return false
+	end
+
+	if state.placedRarity == nil or state.placedModelName == nil or state.ratePerSecond <= 0 then
+		return false
+	end
+
+	local currentLevel = math.max(1, state.brainrotLevel)
+	if currentLevel >= MAX_BRAINROT_LEVEL then
+		return false
+	end
+
+	return state.upgradePrice > 0
+end
+
+local function applySingleLevelUpgrade(state: PedestalState, player: Player): boolean
+	if not isStateUpgradeableForPlayer(state, player) then
+		updateUpgradeDisplay(state)
+		return false
+	end
+
+	local currentUpgradePrice = state.upgradePrice
+	state.ratePerSecond = math.ceil(state.ratePerSecond * 1.15)
+	state.upgradePrice = math.ceil(currentUpgradePrice * 1.45)
+	state.brainrotLevel = math.min(MAX_BRAINROT_LEVEL, math.max(1, state.brainrotLevel) + 1)
+	refreshPlacedDisplayStats(state)
+	updateUpgradeDisplay(state)
+	savePedestalData(player, state)
+	pedestalUpgradeSfxRemote:FireClient(player)
+	return true
+end
+
+local function resolvePendingSkipLevelState(player: Player): PedestalState?
+	local pendingRequest = pendingSkipLevelRequestByPlayer[player]
+	if not pendingRequest then
+		return nil
+	end
+
+	local state = pedestalByUpgradeButton[pendingRequest.upgradeButton]
+	if not state then
+		return nil
+	end
+
+	if state.pedestalId ~= pendingRequest.pedestalId then
+		return nil
+	end
+
+	return state
+end
+
 local function onUpgradeButtonRequested(player: Player, upgradeButtonInstance: Instance?)
 	if upgradeInFlightByPlayer[player] then
 		return
@@ -561,17 +623,7 @@ local function onUpgradeButtonRequested(player: Player, upgradeButtonInstance: I
 		return
 	end
 
-	if state.plot.ownerUserId ~= player.UserId then
-		upgradeInFlightByPlayer[player] = nil
-		return
-	end
-
-	if state.placedRarity == nil or state.placedModelName == nil or state.ratePerSecond <= 0 then
-		updateUpgradeDisplay(state)
-		upgradeInFlightByPlayer[player] = nil
-		return
-	end
-	if math.max(1, state.brainrotLevel) >= MAX_BRAINROT_LEVEL then
+	if not isStateUpgradeableForPlayer(state, player) then
 		updateUpgradeDisplay(state)
 		upgradeInFlightByPlayer[player] = nil
 		return
@@ -585,22 +637,79 @@ local function onUpgradeButtonRequested(player: Player, upgradeButtonInstance: I
 
 	local currentMoney = profile.Data.Money
 	local upgradeCost = state.upgradePrice
-	if typeof(currentMoney) ~= "number" or upgradeCost <= 0 or currentMoney < upgradeCost then
+	if typeof(currentMoney) ~= "number" or upgradeCost <= 0 then
+		updateUpgradeDisplay(state)
+		upgradeInFlightByPlayer[player] = nil
+		return
+	end
+
+	if currentMoney < upgradeCost then
+		if DataManager.ConsumeSkipLevelCredit(player) then
+			local didApplySkipLevelUpgrade = applySingleLevelUpgrade(state, player)
+			if not didApplySkipLevelUpgrade then
+				DataManager.AddSkipLevelCredits(player, 1)
+			end
+			pendingSkipLevelRequestByPlayer[player] = nil
+			upgradeInFlightByPlayer[player] = nil
+			return
+		end
+
+		pendingSkipLevelRequestByPlayer[player] = {
+			pedestalId = state.pedestalId,
+			upgradeButton = state.upgradeButton,
+		}
+		local didPromptSkipLevelPurchase, promptError = pcall(function()
+			MarketplaceService:PromptProductPurchase(player, SKIP_LEVEL_PRODUCT_ID)
+		end)
+		if not didPromptSkipLevelPurchase then
+			warn(`[PedestalInit] Failed to prompt SkipLevel product for {player.Name}: {promptError}`)
+			pendingSkipLevelRequestByPlayer[player] = nil
+		end
+
 		updateUpgradeDisplay(state)
 		upgradeInFlightByPlayer[player] = nil
 		return
 	end
 
 	DataManager.UpdateMoney(player, -upgradeCost)
-	state.ratePerSecond = math.ceil(state.ratePerSecond * 1.15)
-	state.upgradePrice = math.ceil(upgradeCost * 1.45)
-	state.brainrotLevel = math.min(MAX_BRAINROT_LEVEL, math.max(1, state.brainrotLevel) + 1)
-	refreshPlacedDisplayStats(state)
-	updateUpgradeDisplay(state)
-	savePedestalData(player, state)
-	pedestalUpgradeSfxRemote:FireClient(player)
+	local didApplyMoneyUpgrade = applySingleLevelUpgrade(state, player)
+	if not didApplyMoneyUpgrade then
+		DataManager.UpdateMoney(player, upgradeCost)
+	end
+	pendingSkipLevelRequestByPlayer[player] = nil
 
 	upgradeInFlightByPlayer[player] = nil
+end
+
+local function processSkipLevelReceipt(receiptInfo: any): Enum.ProductPurchaseDecision
+	local player = Players:GetPlayerByUserId(receiptInfo.PlayerId)
+	if not player then
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+
+	if not DataManager.Profiles[player] then
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+
+	local hadPendingRequest = pendingSkipLevelRequestByPlayer[player] ~= nil
+	local pendingState = resolvePendingSkipLevelState(player)
+	pendingSkipLevelRequestByPlayer[player] = nil
+
+	-- Off-flow purchases are intentionally not granted for this product.
+	if not hadPendingRequest then
+		return Enum.ProductPurchaseDecision.PurchaseGranted
+	end
+
+	if pendingState and applySingleLevelUpgrade(pendingState, player) then
+		return Enum.ProductPurchaseDecision.PurchaseGranted
+	end
+
+	local updatedSkipLevelCredits = DataManager.AddSkipLevelCredits(player, 1)
+	if updatedSkipLevelCredits <= 0 then
+		return Enum.ProductPurchaseDecision.NotProcessedYet
+	end
+
+	return Enum.ProductPurchaseDecision.PurchaseGranted
 end
 
 local function buildPedestalState(plot: any, pedestalId: string, pedestalModel: Model): PedestalState
@@ -757,6 +866,15 @@ end
 
 buildMetadataLookup()
 initializePedestals()
+
+MarketplaceService.ProcessReceipt = function(receiptInfo)
+	if receiptInfo.ProductId == SKIP_LEVEL_PRODUCT_ID then
+		return processSkipLevelReceipt(receiptInfo)
+	end
+
+	return Enum.ProductPurchaseDecision.PurchaseGranted
+end
+
 requestPedestalUpgradeRemote.OnServerEvent:Connect(onUpgradeButtonRequested)
 
 for _, player in Players:GetPlayers() do
@@ -769,6 +887,7 @@ end)
 
 Players.PlayerRemoving:Connect(function(player)
 	upgradeInFlightByPlayer[player] = nil
+	pendingSkipLevelRequestByPlayer[player] = nil
 	local targetUserId = player.UserId
 	for plot in pedestalsByPlot do
 		local ownerUserId = resolvePlotOwnerUserId(plot)
