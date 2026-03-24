@@ -147,7 +147,13 @@ function DataManager.SetMoney(player: Player, money: number)
 	pushMoneyToClient(player, normalizedMoney)
 end
 
-function DataManager.AddBrainrotTool(player: Player, rarity: string, modelName: string, amount: number?, level: number?): number
+function DataManager.AddBrainrotTool(
+	player: Player,
+	rarity: string,
+	modelName: string,
+	amount: number?,
+	level: number?
+): number
 	local profile = DataManager.Profiles[player]
 	if not profile then
 		return 0
@@ -237,7 +243,10 @@ function DataManager.RemoveBrainrotTool(
 				end
 
 				local candidateLevel = modelLevels[index]
-				if typeof(candidateLevel) == "number" and math.max(1, math.floor(candidateLevel)) == normalizedPreferredLevel then
+				if
+					typeof(candidateLevel) == "number"
+					and math.max(1, math.floor(candidateLevel)) == normalizedPreferredLevel
+				then
 					table.remove(modelLevels, index)
 					removalsRemaining -= 1
 				end
@@ -464,4 +473,21 @@ function DataManager.SetTutorialCompleted(player: Player, completed: boolean)
 	tutorial.Completed = completed == true
 end
 
+function DataManager.GetPlotLevel(player: Player): number
+	local profile = DataManager.Profiles[player]
+	if not profile then
+		return 0
+	end
+
+	return profile.Data.PlotLevel
+end
+
+function DataManager.SetPlotLevel(player: Player, plotLevel: number)
+	local profile = DataManager.Profiles[player]
+	if not profile then
+		return
+	end
+
+	profile.Data.PlotLevel = math.max(0, math.floor(plotLevel))
+end
 return DataManager

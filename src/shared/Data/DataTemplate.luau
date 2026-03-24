@@ -8,10 +8,13 @@ return {
 		SpeedLevel = 0,
 		JumpLevel = 0,
 	},
+	PlotLevel = 0,
+
 	Tutorial = {
 		Step = 0,
 		Completed = false,
 	},
+
 	DeveloperProducts = {
 		SkipLevelCredits = 0,
 	},
