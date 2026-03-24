@@ -146,3 +146,17 @@ if not pedestalUpgradeSfx then
 	pedestalUpgradeSfx.Name = "PedestalUpgradeSfx"
 	pedestalUpgradeSfx.Parent = remotes
 end
+
+local requestPlotUpgrade = remotes:FindFirstChild("RequestPlotUpgrade")
+if not requestPlotUpgrade then
+	requestPlotUpgrade = Instance.new("RemoteEvent")
+	requestPlotUpgrade.Name = "RequestPlotUpgrade"
+	requestPlotUpgrade.Parent = remotes
+end
+
+local plotUpgrade = remotes:FindFirstChild("PlotUpgrade")
+if not plotUpgrade then
+	plotUpgrade = Instance.new("RemoteEvent")
+	plotUpgrade.Name = "PlotUpgrade"
+	plotUpgrade.Parent = remotes
+end
