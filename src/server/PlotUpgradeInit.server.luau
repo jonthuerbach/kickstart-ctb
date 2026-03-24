@@ -176,6 +176,52 @@ local function setInstanceVisibility(root: Instance, isVisible: boolean)
 	end
 end
 
+-- Pedestal visibility is special: we can force-disable UI/prompts while hidden,
+-- but must not force-enable them while visible because PedestalInit owns that state.
+local function applyPedestalVisibilityToSingleInstance(instance: Instance, isVisible: boolean)
+	if instance:IsA("BasePart") then
+		setBasePartVisibility(instance, isVisible)
+		return
+	end
+
+	if instance:IsA("Decal") then
+		setDecalVisibility(instance, isVisible)
+		return
+	end
+	if instance:IsA("Texture") then
+		setTextureVisibility(instance, isVisible)
+		return
+	end
+
+	if instance:IsA("ProximityPrompt") then
+		instance:SetAttribute(ATTR_PLOT_REVEAL_VISIBLE, isVisible)
+		if not isVisible then
+			instance.Enabled = false
+		end
+		return
+	end
+
+	if instance:IsA("SurfaceGui") then
+		if not isVisible then
+			instance.Enabled = false
+		end
+		return
+	end
+
+	if instance:IsA("BillboardGui") then
+		if not isVisible then
+			instance.Enabled = false
+		end
+	end
+end
+
+local function setPedestalModelVisibility(pedestalModel: Model, isVisible: boolean)
+	applyPedestalVisibilityToSingleInstance(pedestalModel, isVisible)
+	for _, descendant in pedestalModel:GetDescendants() do
+		applyPedestalVisibilityToSingleInstance(descendant, isVisible)
+	end
+end
+
 local function getSelfAndDescendants(root: Instance): { Instance }
 	local allInstances = { root }
 	for _, descendant in root:GetDescendants() do
@@ -303,7 +349,7 @@ local function applySecondFloorPedestalUnlocks(state: PlotUpgradeState, plotLeve
 		end
 
 		pedestalModel:SetAttribute("PlotPedestalUnlocked", isUnlocked)
-		setInstanceVisibility(pedestalModel, isUnlocked)
+		setPedestalModelVisibility(pedestalModel, isUnlocked)
 	end
 end
 
