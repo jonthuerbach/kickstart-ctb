@@ -3,6 +3,7 @@ local Workspace = game:GetService("Workspace")
 
 local localPlayer = Players.LocalPlayer
 local observedPlots: { [Model]: boolean } = {}
+local observedPrompts: { [ProximityPrompt]: boolean } = {}
 
 local function isBrainrotTool(instance: Instance): boolean
 	return instance:IsA("Tool") and instance:GetAttribute("IsBrainrotTool") == true
@@ -53,6 +54,10 @@ local function getOwningPlotModel(instance: Instance): Model?
 end
 
 local function shouldEnablePrompt(prompt: ProximityPrompt): boolean
+	if prompt:GetAttribute("PlotRevealVisible") == false then
+		return false
+	end
+
 	local plotModel = getOwningPlotModel(prompt)
 	if not plotModel then
 		return false
@@ -111,10 +116,23 @@ local function observePlot(plotModel: Model)
 end
 
 local function observePrompt(plotPrompt: ProximityPrompt)
+	if observedPrompts[plotPrompt] then
+		return
+	end
+
+	observedPrompts[plotPrompt] = true
 	local plotModel = getOwningPlotModel(plotPrompt)
 	if plotModel then
 		observePlot(plotModel)
 	end
+
+	plotPrompt:GetAttributeChangedSignal("PlotRevealVisible"):Connect(function()
+		refreshPrompt(plotPrompt)
+	end)
+
+	plotPrompt.Destroying:Connect(function()
+		observedPrompts[plotPrompt] = nil
+	end)
 end
 
 local function bindCharacter(character: Model)

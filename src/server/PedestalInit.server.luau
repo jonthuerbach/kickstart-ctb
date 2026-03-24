@@ -68,6 +68,10 @@ type BrainrotCatalogMetadata = {
 
 local METADATA_LOOKUP: { [string]: BrainrotCatalogMetadata } = {}
 
+local function isPedestalModelUnlocked(pedestalModel: Model): boolean
+	return pedestalModel:GetAttribute("PlotPedestalUnlocked") ~= false
+end
+
 local function buildMetadataLookup()
 	for _, entries in BrainrotCatalog.Names do
 		if typeof(entries) ~= "table" then
@@ -118,6 +122,16 @@ local function getUpgradeStatsForLevel(baseRatePerSecond: number, level: number)
 end
 
 local function updateUpgradeDisplay(state: PedestalState)
+	local isUnlocked = isPedestalModelUnlocked(state.pedestalModel)
+	if not isUnlocked then
+		state.upgradeSurfaceGui.Enabled = false
+		state.upgradeButton.Active = false
+		state.upgradeButton.AutoButtonColor = false
+		state.upgradeCostLabel.Text = ""
+		state.upgradeLevelLabel.Text = ""
+		return
+	end
+
 	local isOccupied = state.placedRarity ~= nil and state.placedModelName ~= nil
 	state.upgradeSurfaceGui.Enabled = isOccupied
 	state.upgradeButton.Active = isOccupied
@@ -144,6 +158,16 @@ local function updateUpgradeDisplay(state: PedestalState)
 end
 
 local function updateMoneyLabel(state: PedestalState)
+	local isUnlocked = isPedestalModelUnlocked(state.pedestalModel)
+	if not isUnlocked then
+		state.moneyLabel.Text = ""
+		state.collectButton:SetAttribute("IsPedestalCollectButton", true)
+		state.collectButton:SetAttribute("PedestalOccupied", false)
+		state.collectButton:SetAttribute("PedestalBankedMoney", 0)
+		state.collectButton:SetAttribute("PedestalSuppressUnoccupiedMoney", true)
+		return
+	end
+
 	local isOccupied = state.placedRarity ~= nil and state.placedModelName ~= nil
 	local bankedMoney = math.max(0, state.bankedMoney)
 	local suppressUnoccupiedMoneyDisplay = state.suppressUnoccupiedMoneyDisplay == true
@@ -241,6 +265,10 @@ end
 
 local function onRemovePromptTriggered(state: PedestalState, player: Player)
 	if state.plot.ownerUserId ~= player.UserId then
+		return
+	end
+
+	if not isPedestalModelUnlocked(state.pedestalModel) then
 		return
 	end
 
@@ -484,6 +512,10 @@ local function onPlacePromptTriggered(state: PedestalState, player: Player)
 		return
 	end
 
+	if not isPedestalModelUnlocked(state.pedestalModel) then
+		return
+	end
+
 	local equippedTool = getEquippedBrainrotTool(player)
 	if not equippedTool then
 		return
@@ -550,6 +582,10 @@ local function onCollectButtonTouched(state: PedestalState, hit: BasePart)
 		return
 	end
 
+	if not isPedestalModelUnlocked(state.pedestalModel) then
+		return
+	end
+
 	local now = os.clock()
 	if (now - state.collectDebounceAt) < 1 then
 		return
@@ -571,6 +607,10 @@ end
 
 local function isStateUpgradeableForPlayer(state: PedestalState, player: Player): boolean
 	if state.plot.ownerUserId ~= player.UserId then
+		return false
+	end
+
+	if not isPedestalModelUnlocked(state.pedestalModel) then
 		return false
 	end
 
