@@ -479,7 +479,13 @@ function DataManager.GetPlotLevel(player: Player): number
 		return 0
 	end
 
-	return profile.Data.PlotLevel
+	local plotLevel = profile.Data.PlotLevel
+	if typeof(plotLevel) ~= "number" then
+		profile.Data.PlotLevel = 0
+		return 0
+	end
+
+	return math.max(0, math.floor(plotLevel))
 end
 
 function DataManager.SetPlotLevel(player: Player, plotLevel: number)
