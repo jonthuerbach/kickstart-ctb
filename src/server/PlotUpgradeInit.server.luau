@@ -3,18 +3,23 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local PlotManager = require(ReplicatedStorage.Shared.Managers.PlotManager)
 local DataManager = require(ReplicatedStorage.Shared.Data.DataManager)
+local NumberFormatter = require(ReplicatedStorage.Shared.Utils.NumberFormatter)
 
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local requestPlotUpgradeRemote = remotes:WaitForChild("RequestPlotUpgrade") :: RemoteEvent
 local plotUpgradeRemote = remotes:WaitForChild("PlotUpgrade") :: RemoteEvent
+local pedestalUpgradeSfxRemote = remotes:WaitForChild("PedestalUpgradeSfx") :: RemoteEvent
 
 local MAX_PLOT_LEVEL = 10
+local PLOT_UPGRADE_INITIAL_PRICE = 10000000
+local PLOT_UPGRADE_PRICE_MULTIPLIER = 2
 
 type PlotUpgradeState = {
 	plot: any,
 	plotModel: Model,
 	upgradeButton: GuiButton,
 	levelLabel: TextLabel,
+	costLabel: TextLabel,
 }
 
 local stateByButton: { [GuiButton]: PlotUpgradeState } = {}
@@ -22,6 +27,16 @@ local stateByPlot: { [any]: PlotUpgradeState } = {}
 
 local function normalizePlotLevel(plotLevel: number): number
 	return math.clamp(math.max(0, math.floor(plotLevel)), 0, MAX_PLOT_LEVEL)
+end
+
+local function getUpgradePriceForCurrentLevel(currentPlotLevel: number): number?
+	local normalizedCurrentPlotLevel = normalizePlotLevel(currentPlotLevel)
+	if normalizedCurrentPlotLevel >= MAX_PLOT_LEVEL then
+		return nil
+	end
+
+	local price = PLOT_UPGRADE_INITIAL_PRICE * (PLOT_UPGRADE_PRICE_MULTIPLIER ^ normalizedCurrentPlotLevel)
+	return math.max(0, math.floor(price))
 end
 
 local function resolvePlotOwnerUserId(plot: any): number?
@@ -43,8 +58,11 @@ end
 
 local function applyPlotLevelToState(state: PlotUpgradeState, plotLevel: number)
 	local normalizedPlotLevel = normalizePlotLevel(plotLevel)
+	local upgradePrice = getUpgradePriceForCurrentLevel(normalizedPlotLevel)
 	state.upgradeButton:SetAttribute("PlotLevel", normalizedPlotLevel)
+	state.upgradeButton:SetAttribute("PlotUpgradePrice", upgradePrice)
 	state.levelLabel.Text = `{normalizedPlotLevel}/{MAX_PLOT_LEVEL}`
+	state.costLabel.Text = if upgradePrice then NumberFormatter.FormatMoney(upgradePrice) else "MAX"
 end
 
 local function syncStateToCurrentOwner(state: PlotUpgradeState)
@@ -80,9 +98,12 @@ local function buildPlotUpgradeState(plot: any): PlotUpgradeState?
 	local upgradeButtonFrame = if surfaceGui then surfaceGui:FindFirstChild("UpgradeButtonFrame") else nil
 	local upgradeButton = if upgradeButtonFrame then upgradeButtonFrame:FindFirstChild("UpgradeBaseButton") else nil
 	local levelLabel = if upgradeButton then upgradeButton:FindFirstChild("Level") else nil
+	local costLabel = if upgradeButton then upgradeButton:FindFirstChild("Cost") else nil
 
 	if not upgradeButton or not upgradeButton:IsA("GuiButton") then
-		warn(`[PlotUpgradeInit] Missing GuiButton at Upgrade.Main.SurfaceGui.UpgradeButtonFrame.UpgradeBaseButton on plot {plotModel.Name}`)
+		warn(
+			`[PlotUpgradeInit] Missing GuiButton at Upgrade.Main.SurfaceGui.UpgradeButtonFrame.UpgradeBaseButton on plot {plotModel.Name}`
+		)
 		return nil
 	end
 
@@ -91,11 +112,17 @@ local function buildPlotUpgradeState(plot: any): PlotUpgradeState?
 		return nil
 	end
 
+	if not costLabel or not costLabel:IsA("TextLabel") then
+		warn(`[PlotUpgradeInit] Missing TextLabel at UpgradeBaseButton.Cost on plot {plotModel.Name}`)
+		return nil
+	end
+
 	local state: PlotUpgradeState = {
 		plot = plot,
 		plotModel = plotModel,
 		upgradeButton = upgradeButton,
 		levelLabel = levelLabel,
+		costLabel = costLabel,
 	}
 
 	upgradeButton:SetAttribute("IsPlotUpgradeButton", true)
@@ -176,9 +203,28 @@ local function onRequestPlotUpgrade(player: Player, upgradeButtonInstance: Insta
 		return
 	end
 
+	local profile = DataManager.Profiles[player]
+	if not profile then
+		return
+	end
+
+	local upgradePrice = getUpgradePriceForCurrentLevel(currentPlotLevel)
+	if not upgradePrice or upgradePrice <= 0 then
+		return
+	end
+
+	local currentMoney = profile.Data.Money
+	if typeof(currentMoney) ~= "number" or currentMoney < upgradePrice then
+		applyPlotLevelToState(state, currentPlotLevel)
+		return
+	end
+
+	DataManager.UpdateMoney(player, -upgradePrice)
+
 	local nextPlotLevel = currentPlotLevel + 1
 	DataManager.SetPlotLevel(player, nextPlotLevel)
 	applyPlotLevelToState(state, nextPlotLevel)
+	pedestalUpgradeSfxRemote:FireClient(player)
 	plotUpgradeRemote:FireClient(player, upgradeButton, nextPlotLevel)
 end
 
