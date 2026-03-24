@@ -18,6 +18,7 @@ local pedestalUpgradeSfxRemote = remotes:WaitForChild("PedestalUpgradeSfx") :: R
 local brainrotsRoot = ReplicatedStorage:WaitForChild("Brainrots")
 local MAX_BRAINROT_LEVEL = 100
 local SKIP_LEVEL_PRODUCT_ID = DeveloperProductCatalog.GetProductId("SkipLevel")
+local BRAINROT_RATE_PER_SECOND_MULTIPLIER = 1.2
 
 assert(typeof(SKIP_LEVEL_PRODUCT_ID) == "number", "[PedestalInit] Missing SkipLevel developer product id")
 
@@ -114,7 +115,7 @@ local function getUpgradeStatsForLevel(baseRatePerSecond: number, level: number)
 	local currentRatePerSecond = math.max(1, math.floor(baseRatePerSecond))
 	local currentUpgradePrice = getInitialUpgradePrice(currentRatePerSecond)
 	for _ = 2, targetLevel do
-		currentRatePerSecond = math.ceil(currentRatePerSecond * 1.15)
+		currentRatePerSecond = math.ceil(currentRatePerSecond * BRAINROT_RATE_PER_SECOND_MULTIPLIER)
 		currentUpgradePrice = math.ceil(currentUpgradePrice * 1.45)
 	end
 
@@ -542,7 +543,8 @@ local function onPlacePromptTriggered(state: PedestalState, player: Player)
 		BrainrotToolManager.AssertToolTemplate(replacedRarity, replacedModelName)
 	end
 
-	local updatedCount = BrainrotToolManager.ConsumeOwnedTool(player, placingRarity, placingModelName, resolvedPlacingLevel)
+	local updatedCount =
+		BrainrotToolManager.ConsumeOwnedTool(player, placingRarity, placingModelName, resolvedPlacingLevel)
 	if updatedCount < 0 then
 		return
 	end
@@ -633,7 +635,7 @@ local function applySingleLevelUpgrade(state: PedestalState, player: Player): bo
 	end
 
 	local currentUpgradePrice = state.upgradePrice
-	state.ratePerSecond = math.ceil(state.ratePerSecond * 1.15)
+	state.ratePerSecond = math.ceil(state.ratePerSecond * BRAINROT_RATE_PER_SECOND_MULTIPLIER)
 	state.upgradePrice = math.ceil(currentUpgradePrice * 1.45)
 	state.brainrotLevel = math.min(MAX_BRAINROT_LEVEL, math.max(1, state.brainrotLevel) + 1)
 	refreshPlacedDisplayStats(state)
