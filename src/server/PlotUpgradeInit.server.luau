@@ -176,8 +176,19 @@ local function setInstanceVisibility(root: Instance, isVisible: boolean)
 	end
 end
 
+local function isPedestalUpgradeSurfaceGui(gui: SurfaceGui): boolean
+	for _, child in gui:GetChildren() do
+		if child:IsA("GuiButton") and child:GetAttribute("IsPedestalUpgradeButton") == true then
+			return true
+		end
+	end
+	return false
+end
+
 -- Pedestal visibility is special: we can force-disable UI/prompts while hidden,
--- but must not force-enable them while visible because PedestalInit owns that state.
+-- but must not force-enable the upgrade SurfaceGui while visible because
+-- PedestalInit owns that state. Other SurfaceGuis (e.g. CollectButton) are safe
+-- to restore.
 local function applyPedestalVisibilityToSingleInstance(instance: Instance, isVisible: boolean)
 	if instance:IsA("BasePart") then
 		setBasePartVisibility(instance, isVisible)
@@ -204,6 +215,9 @@ local function applyPedestalVisibilityToSingleInstance(instance: Instance, isVis
 	if instance:IsA("SurfaceGui") then
 		if not isVisible then
 			instance.Enabled = false
+		elseif not isPedestalUpgradeSurfaceGui(instance) then
+			rememberDefaultEnabled(instance, true)
+			instance.Enabled = true
 		end
 		return
 	end
