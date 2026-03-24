@@ -202,28 +202,37 @@ end
 
 function Plot._setupPedestals(self: Plot)
 	local pedestalTemplate = ReplicatedStorage:WaitForChild("Templates"):WaitForChild("PedestalTemplate") :: Model
-	local pedestalsFolder = self._model:FindFirstChild("Level01")
-	if not pedestalsFolder then
-		warn(`[Plot] Level01 is missing on plot {self.plotId}`)
+	local levelsFolder = self._model:FindFirstChild("Levels")
+
+	if not levelsFolder then
+		warn(`[Plot] Levels folder is missing on plot {self.plotId}`)
 		return
 	end
 
-	pedestalsFolder = pedestalsFolder:FindFirstChild("Pedestals")
-	if not pedestalsFolder then
-		warn(`[Plot] Pedestals folder is missing on plot {self.plotId}`)
-		return
-	end
-
-	for _, child in pedestalsFolder:GetChildren() do
-		if not child:IsA("Attachment") then
-			continue
+	for _, levelFolder in levelsFolder:GetChildren() do
+		local pedestalsFolder = levelsFolder:FindFirstChild(levelFolder.Name)
+		if not pedestalsFolder then
+			warn(`[Plot] Level01 is missing on plot {self.plotId}`)
+			return
 		end
 
-		local pedestalClone = pedestalTemplate:Clone()
-		pedestalClone.Name = child.Name:gsub("Attachment", "")
-		pedestalClone.Parent = self._model
-		pedestalClone:PivotTo(child.WorldCFrame)
-		self._pedestals[pedestalClone.Name] = pedestalClone
+		pedestalsFolder = pedestalsFolder:FindFirstChild("Pedestals")
+		if not pedestalsFolder then
+			warn(`[Plot] Pedestals folder is missing on plot {self.plotId}`)
+			return
+		end
+
+		for _, child in pedestalsFolder:GetChildren() do
+			if not child:IsA("Attachment") then
+				continue
+			end
+
+			local pedestalClone = pedestalTemplate:Clone()
+			pedestalClone.Name = child.Name:gsub("Attachment", "")
+			pedestalClone.Parent = self._model
+			pedestalClone:PivotTo(child.WorldCFrame)
+			self._pedestals[pedestalClone.Name] = pedestalClone
+		end
 	end
 end
 
