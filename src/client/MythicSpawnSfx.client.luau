@@ -34,7 +34,7 @@ local bannerStroke = Instance.new("UIStroke")
 bannerStroke.Color = Color3.fromRGB(0, 0, 0)
 bannerStroke.StrokeSizingMode = Enum.StrokeSizingMode.ScaledSize
 bannerStroke.Thickness = 0.1
-bannerStroke.LineJoinMode = Enum.LineJoinMode.Round
+bannerStroke.LineJoinMode = Enum.LineJoinMode.Bevel
 bannerStroke.Parent = bannerLabel
 
 local mythicSpawnSound = Instance.new("Sound")
