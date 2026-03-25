@@ -1,5 +1,6 @@
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
+local TweenService = game:GetService("TweenService")
 local Workspace = game:GetService("Workspace")
 
 local BrainrotCatalog = require(ReplicatedStorage.Shared.Catalogs.BrainrotCatalog)
@@ -9,6 +10,12 @@ local HOVER_AMPLITUDE_STUDS = 0.6
 local HOVER_CYCLES_PER_SECOND = 0.2
 local SPIN_DEGREES_PER_SECOND = 18
 local SHOWCASE_MODEL_NAME = "ShowcaseBrainrot"
+local MIN_SCALE = 0.001
+local OVERSHOOT_SCALE = 1.1
+local INTRO_POP_DURATION_SECONDS = 0.35
+local INTRO_SETTLE_DURATION_SECONDS = 0.2
+local OUTRO_POP_DURATION_SECONDS = 0.25
+local OUTRO_SHRINK_DURATION_SECONDS = 0.3
 
 local world = Workspace:WaitForChild("World")
 local brainrotBillboardRoot = world:WaitForChild("BrainrotBillboard")
@@ -32,6 +39,7 @@ assert(typeof(mythicEntries) == "table" and #mythicEntries > 0, "[MythicBillboar
 
 local activeModel: Model? = nil
 local activeModelStartedAt = 0
+local activeModelBaseScale = 1
 
 for _, child in billboardModelRoot:GetChildren() do
 	if child:IsA("Model") and child.Name == SHOWCASE_MODEL_NAME then
@@ -44,6 +52,82 @@ local function clearActiveModel()
 		activeModel:Destroy()
 		activeModel = nil
 	end
+	activeModelBaseScale = 1
+end
+
+local function tweenModelScale(
+	model: Model,
+	targetScale: number,
+	durationSeconds: number,
+	easingStyle: Enum.EasingStyle,
+	easingDirection: Enum.EasingDirection
+): boolean
+	if not model.Parent then
+		return false
+	end
+
+	local scaleDriver = Instance.new("NumberValue")
+	scaleDriver.Value = model:GetScale()
+	local scaleChangedConnection = scaleDriver:GetPropertyChangedSignal("Value"):Connect(function()
+		if model.Parent then
+			model:ScaleTo(math.max(MIN_SCALE, scaleDriver.Value))
+		end
+	end)
+
+	local tween = TweenService:Create(
+		scaleDriver,
+		TweenInfo.new(durationSeconds, easingStyle, easingDirection),
+		{ Value = targetScale }
+	)
+	tween:Play()
+	tween.Completed:Wait()
+
+	scaleChangedConnection:Disconnect()
+	scaleDriver:Destroy()
+
+	return model.Parent ~= nil
+end
+
+local function playSpawnTweens(model: Model, baseScale: number): boolean
+	local collapsedScale = math.max(MIN_SCALE, baseScale * MIN_SCALE)
+	local overshootScale = math.max(MIN_SCALE, baseScale * OVERSHOOT_SCALE)
+
+	model:ScaleTo(collapsedScale)
+	local didPop = tweenModelScale(
+		model,
+		overshootScale,
+		INTRO_POP_DURATION_SECONDS,
+		Enum.EasingStyle.Back,
+		Enum.EasingDirection.Out
+	)
+	if not didPop then
+		return false
+	end
+
+	return tweenModelScale(model, baseScale, INTRO_SETTLE_DURATION_SECONDS, Enum.EasingStyle.Bounce, Enum.EasingDirection.Out)
+end
+
+local function playDespawnTweens(model: Model, baseScale: number): boolean
+	local collapsedScale = math.max(MIN_SCALE, baseScale * MIN_SCALE)
+	local overshootScale = math.max(MIN_SCALE, baseScale * OVERSHOOT_SCALE)
+	local didPop = tweenModelScale(
+		model,
+		overshootScale,
+		OUTRO_POP_DURATION_SECONDS,
+		Enum.EasingStyle.Back,
+		Enum.EasingDirection.Out
+	)
+	if not didPop then
+		return false
+	end
+
+	return tweenModelScale(
+		model,
+		collapsedScale,
+		OUTRO_SHRINK_DURATION_SECONDS,
+		Enum.EasingStyle.Back,
+		Enum.EasingDirection.In
+	)
 end
 
 local function configureShowcaseModel(model: Model)
@@ -75,13 +159,17 @@ local function spawnShowcaseModel(entry: any): boolean
 	clearActiveModel()
 
 	local clone = template:Clone()
+	local baseScale = math.max(MIN_SCALE, clone:GetScale())
+	local collapsedScale = math.max(MIN_SCALE, baseScale * MIN_SCALE)
 	clone.Name = SHOWCASE_MODEL_NAME
 	configureShowcaseModel(clone)
 	clone.Parent = billboardModelRoot
+	clone:ScaleTo(collapsedScale)
 	clone:PivotTo(brainrotAttachment.WorldCFrame)
 
 	activeModel = clone
 	activeModelStartedAt = os.clock()
+	activeModelBaseScale = baseScale
 	return true
 end
 
@@ -104,9 +192,23 @@ task.spawn(function()
 	local currentIndex = 1
 	while true do
 		local entry = mythicEntries[currentIndex]
-		spawnShowcaseModel(entry)
+		local didSpawn = spawnShowcaseModel(entry)
+		if didSpawn then
+			local model = activeModel
+			local baseScale = activeModelBaseScale
+			if model and model.Parent then
+				playSpawnTweens(model, baseScale)
+				task.wait(SHOWCASE_DURATION_SECONDS)
 
-		task.wait(SHOWCASE_DURATION_SECONDS)
+				-- Only play despawn tween if this is still the active showcase model.
+				if activeModel == model and model.Parent then
+					playDespawnTweens(model, baseScale)
+				end
+			end
+			clearActiveModel()
+		else
+			task.wait(1)
+		end
 
 		currentIndex += 1
 		if currentIndex > #mythicEntries then
