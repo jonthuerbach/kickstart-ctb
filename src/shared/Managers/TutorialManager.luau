@@ -1,7 +1,6 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local RunService = game:GetService("RunService")
-local Workspace = game:GetService("Workspace")
 
 local DataManager = require(ReplicatedStorage.Shared.Data.DataManager)
 local PlotManager = require(ReplicatedStorage.Shared.Managers.PlotManager)
@@ -22,211 +21,19 @@ TutorialManager.STEP_PICKUP_BRAINROT = STEP_PICKUP_BRAINROT
 TutorialManager.STEP_PLACE_BRAINROT = STEP_PLACE_BRAINROT
 TutorialManager.STEP_UPGRADE_SPEED = STEP_UPGRADE_SPEED
 
-type TutorialRuntimeState = {
-	characterAddedConnection: RBXScriptConnection?,
-	characterRemovingConnection: RBXScriptConnection?,
-	beam: Beam?,
-}
-
-local runtimeByPlayer: { [Player]: TutorialRuntimeState } = {}
+local registeredPlayers: { [Player]: boolean } = {}
 local started = false
 local heartbeatConnection: RBXScriptConnection? = nil
 local playerAddedConnection: RBXScriptConnection? = nil
 local playerRemovingConnection: RBXScriptConnection? = nil
 local elapsedSinceRefresh = 0
 
-local templatesFolder = ReplicatedStorage:WaitForChild("Templates")
-local tutorialBeamTemplate = templatesFolder:WaitForChild("TutorialBeam")
-assert(tutorialBeamTemplate:IsA("Beam"), "[TutorialManager] ReplicatedStorage.Templates.TutorialBeam must be a Beam")
-
-local function getRuntimeState(player: Player): TutorialRuntimeState
-	local state = runtimeByPlayer[player]
-	if state then
-		return state
-	end
-
-	state = {
-		characterAddedConnection = nil,
-		characterRemovingConnection = nil,
-		beam = nil,
-	}
-	runtimeByPlayer[player] = state
-	return state
-end
-
-local function getRootAttachment(player: Player): Attachment?
-	local character = player.Character
-	if not character then
-		return nil
-	end
-
-	local humanoidRootPart = character:FindFirstChild("HumanoidRootPart")
-	if not humanoidRootPart or not humanoidRootPart:IsA("BasePart") then
-		return nil
-	end
-
-	local rootAttachment = humanoidRootPart:FindFirstChild("RootAttachment")
-	if rootAttachment and rootAttachment:IsA("Attachment") then
-		return rootAttachment
-	end
-
-	return nil
-end
-
-local function clearBeam(player: Player)
-	local state = runtimeByPlayer[player]
-	if not state then
-		return
-	end
-
-	local beam = state.beam
-	if beam then
-		beam:Destroy()
-		state.beam = nil
-	end
-end
-
-local function getOrCreateBeam(player: Player): Beam?
-	local character = player.Character
-	if not character then
-		return nil
-	end
-
-	local state = getRuntimeState(player)
-	local existingBeam = state.beam
-	if existingBeam and existingBeam.Parent == character then
-		return existingBeam
-	end
-
-	local foundBeam = character:FindFirstChild("TutorialBeam")
-	if foundBeam and foundBeam:IsA("Beam") then
-		state.beam = foundBeam
-		return foundBeam
-	end
-
-	local beamClone = tutorialBeamTemplate:Clone()
-	beamClone.Name = "TutorialBeam"
-	beamClone.Parent = character
-	state.beam = beamClone
-
-	return beamClone
-end
-
-local function getSpeedVendorTutorialAttachment(): Attachment?
-	local world = Workspace:FindFirstChild("World")
-	if not world then
-		return nil
-	end
-
-	local vendors = world:FindFirstChild("Vendors")
-	if not vendors then
-		return nil
-	end
-
-	local speedVendorBooth = vendors:FindFirstChild("SpeedVendorBooth")
-	if not speedVendorBooth then
-		return nil
-	end
-
-	local speedVendor = speedVendorBooth:FindFirstChild("SpeedVendor")
-	if not speedVendor then
-		return nil
-	end
-
-	local tutorialAttachment = speedVendor:FindFirstChild("TutorialAttachment")
-	if tutorialAttachment and tutorialAttachment:IsA("Attachment") then
-		return tutorialAttachment
-	end
-
-	return nil
-end
-
-local function findClosestSpinnerBrainrotAttachment(rootAttachment: Attachment): Attachment?
-	local spinnersFolder = Workspace:FindFirstChild("Spinners")
-	if not spinnersFolder then
-		return nil
-	end
-
-	local closestAttachment: Attachment? = nil
-	local closestDistance = math.huge
-	local rootPosition = rootAttachment.WorldPosition
-
-	for _, spinnerModel in spinnersFolder:GetChildren() do
-		if not spinnerModel:IsA("Model") then
-			continue
-		end
-		if spinnerModel:GetAttribute("IsSpinnerTop") ~= true then
-			continue
-		end
-
-		local brainrot = spinnerModel:FindFirstChild("Brainrot")
-		if not brainrot or not brainrot:IsA("Model") then
-			continue
-		end
-
-		local tutorialAttachment = brainrot:FindFirstChild("TutorialAttachment", true)
-		if not tutorialAttachment or not tutorialAttachment:IsA("Attachment") then
-			continue
-		end
-
-		local distance = (tutorialAttachment.WorldPosition - rootPosition).Magnitude
-		if distance < closestDistance then
-			closestDistance = distance
-			closestAttachment = tutorialAttachment
-		end
-	end
-
-	return closestAttachment
-end
-
-local function getPedestalOnePlaceAttachment(player: Player): Attachment?
-	local plot = PlotManager.GetPlotForPlayer(player)
-	if not plot then
-		return nil
-	end
-
-	local pedestals = plot:GetPedestals()
-	local pedestalOne = pedestals[STEP_TWO_PEDESTAL_ID]
-	if not pedestalOne or not pedestalOne:IsA("Model") then
-		return nil
-	end
-
-	local pedestal = pedestalOne:FindFirstChild("Pedestal")
-	if not pedestal then
-		return nil
-	end
-
-	local placeAttachment = pedestal:FindFirstChild("PlaceAttachment")
-	if placeAttachment and placeAttachment:IsA("Attachment") then
-		return placeAttachment
-	end
-
-	return nil
-end
-
 local function setPlayerStepAttribute(player: Player, step: number)
 	player:SetAttribute(PLAYER_STEP_ATTRIBUTE, step)
 end
 
-local function getTargetAttachment(player: Player, step: number, rootAttachment: Attachment): Attachment?
-	if step == STEP_PICKUP_BRAINROT then
-		return findClosestSpinnerBrainrotAttachment(rootAttachment)
-	end
-
-	if step == STEP_PLACE_BRAINROT then
-		return getPedestalOnePlaceAttachment(player)
-	end
-
-	if step == STEP_UPGRADE_SPEED then
-		return getSpeedVendorTutorialAttachment()
-	end
-
-	return nil
-end
-
-local function refreshBeam(player: Player)
+local function refreshTutorialState(player: Player)
 	if player.Parent ~= Players then
-		clearBeam(player)
 		return
 	end
 
@@ -235,27 +42,10 @@ local function refreshBeam(player: Player)
 	local isActiveStep = step >= STEP_PICKUP_BRAINROT and step <= STEP_UPGRADE_SPEED
 	if tutorialCompleted or not isActiveStep then
 		setPlayerStepAttribute(player, STEP_NONE)
-		clearBeam(player)
 		return
 	end
 
 	setPlayerStepAttribute(player, step)
-
-	local rootAttachment = getRootAttachment(player)
-	if not rootAttachment then
-		clearBeam(player)
-		return
-	end
-
-	local beam = getOrCreateBeam(player)
-	if not beam then
-		return
-	end
-
-	beam.Attachment0 = rootAttachment
-	local targetAttachment = getTargetAttachment(player, step, rootAttachment)
-	beam.Attachment1 = targetAttachment
-	beam.Enabled = targetAttachment ~= nil
 end
 
 local function countPlacedBrainrots(player: Player): number
@@ -358,27 +148,17 @@ end
 local function setStep(player: Player, step: number)
 	DataManager.SetTutorialCompleted(player, false)
 	DataManager.SetTutorialStep(player, step)
-	refreshBeam(player)
+	refreshTutorialState(player)
 end
 
 local function completeTutorial(player: Player)
 	DataManager.SetTutorialStep(player, STEP_NONE)
 	DataManager.SetTutorialCompleted(player, true)
-	refreshBeam(player)
+	refreshTutorialState(player)
 end
 
 local function registerPlayer(player: Player)
-	local state = getRuntimeState(player)
-	if not state.characterAddedConnection then
-		state.characterAddedConnection = player.CharacterAdded:Connect(function()
-			task.defer(refreshBeam, player)
-		end)
-	end
-	if not state.characterRemovingConnection then
-		state.characterRemovingConnection = player.CharacterRemoving:Connect(function()
-			clearBeam(player)
-		end)
-	end
+	registeredPlayers[player] = true
 
 	task.spawn(function()
 		if not waitForPlayerReady(player, READY_TIMEOUT_SECONDS) then
@@ -389,12 +169,12 @@ local function registerPlayer(player: Player)
 		local step = DataManager.GetTutorialStep(player)
 		if completed then
 			DataManager.SetTutorialStep(player, STEP_NONE)
-			refreshBeam(player)
+			refreshTutorialState(player)
 			return
 		end
 
 		if step >= STEP_PICKUP_BRAINROT and step <= STEP_UPGRADE_SPEED then
-			refreshBeam(player)
+			refreshTutorialState(player)
 			return
 		end
 
@@ -404,28 +184,12 @@ local function registerPlayer(player: Player)
 		end
 
 		DataManager.SetTutorialStep(player, STEP_NONE)
-		refreshBeam(player)
+		refreshTutorialState(player)
 	end)
 end
 
 local function unregisterPlayer(player: Player)
-	local state = runtimeByPlayer[player]
-	if not state then
-		return
-	end
-
-	clearBeam(player)
-
-	if state.characterAddedConnection then
-		state.characterAddedConnection:Disconnect()
-		state.characterAddedConnection = nil
-	end
-	if state.characterRemovingConnection then
-		state.characterRemovingConnection:Disconnect()
-		state.characterRemovingConnection = nil
-	end
-
-	runtimeByPlayer[player] = nil
+	registeredPlayers[player] = nil
 end
 
 local function ensureStarted()
@@ -453,8 +217,8 @@ local function ensureStarted()
 		end
 
 		elapsedSinceRefresh = 0
-		for player in runtimeByPlayer do
-			refreshBeam(player)
+		for player in registeredPlayers do
+			refreshTutorialState(player)
 		end
 	end)
 end
