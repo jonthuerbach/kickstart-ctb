@@ -1,6 +1,7 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local TweenService = game:GetService("TweenService")
+local UserInputService = game:GetService("UserInputService")
 local MovementConfig = require(ReplicatedStorage.Shared.Configs.MovementConfig)
 
 local player = Players.LocalPlayer
@@ -38,6 +39,11 @@ local CLOSE_DURATION = 0.1
 local OPEN_PHASE1_RATIO = 0.57
 local EASING_UP = Enum.EasingStyle.Quad
 local EASING_DIRECTION_OUT = Enum.EasingDirection.Out
+local BUTTON_HOVER_SCALE = 1.1
+local BUTTON_PRESS_SCALE = 0.8
+local BUTTON_HOVER_IN_DURATION = 0.09
+local BUTTON_RELEASE_DURATION = 0.08
+local BUTTON_PRESS_IN_DURATION = 0.06
 
 local rebirthMenuRestSize = rebirthMenu.Size
 local isAnimating = false
@@ -51,7 +57,131 @@ local function scaleUDim2(udim2: UDim2, factor: number): UDim2
 	)
 end
 
+local function getOrCreateHoverPressScale(button: GuiButton): UIScale
+	local namedScale = button:FindFirstChild("HoverPressScale")
+	if namedScale and namedScale:IsA("UIScale") then
+		return namedScale
+	end
+
+	for _, child in button:GetChildren() do
+		if child:IsA("UIScale") then
+			return child
+		end
+	end
+
+	local scale = Instance.new("UIScale")
+	scale.Name = "HoverPressScale"
+	scale.Scale = 1
+	scale.Parent = button
+	return scale
+end
+
+local function attachSnappyHoverPressEffect(button: GuiButton)
+	local scale = getOrCreateHoverPressScale(button)
+	local baseScale = scale.Scale
+	local isHovered = false
+	local isPressed = false
+	local activeTween: Tween? = nil
+	local activePressInput: InputObject? = nil
+
+	local function isPressInput(userInputType: Enum.UserInputType): boolean
+		return userInputType == Enum.UserInputType.MouseButton1 or userInputType == Enum.UserInputType.Touch
+	end
+
+	local function tweenScale(targetScale: number, duration: number, easingStyle: Enum.EasingStyle)
+		local currentTween = activeTween
+		if currentTween then
+			currentTween:Cancel()
+		end
+		local newTween =
+			TweenService:Create(scale, TweenInfo.new(duration, easingStyle, Enum.EasingDirection.Out), { Scale = targetScale })
+		activeTween = newTween
+		newTween:Play()
+	end
+
+	local function updateButtonScale()
+		if isPressed then
+			tweenScale(baseScale * BUTTON_PRESS_SCALE, BUTTON_PRESS_IN_DURATION, Enum.EasingStyle.Quad)
+			return
+		end
+
+		if isHovered then
+			tweenScale(baseScale * BUTTON_HOVER_SCALE, BUTTON_HOVER_IN_DURATION, Enum.EasingStyle.Back)
+			return
+		end
+
+		tweenScale(baseScale, BUTTON_RELEASE_DURATION, Enum.EasingStyle.Quad)
+	end
+
+	button.MouseEnter:Connect(function()
+		isHovered = true
+		updateButtonScale()
+	end)
+
+	button.MouseLeave:Connect(function()
+		isHovered = false
+		isPressed = false
+		updateButtonScale()
+	end)
+
+	button.MouseButton1Down:Connect(function()
+		-- Mouse fallback for environments where InputBegan may not fire on the button.
+		isPressed = true
+		activePressInput = nil
+		updateButtonScale()
+	end)
+
+	button.MouseButton1Up:Connect(function()
+		isPressed = false
+		activePressInput = nil
+		updateButtonScale()
+	end)
+
+	button.InputBegan:Connect(function(input: InputObject)
+		if not isPressInput(input.UserInputType) then
+			return
+		end
+
+		isPressed = true
+		activePressInput = input
+		updateButtonScale()
+	end)
+
+	button.InputEnded:Connect(function(input: InputObject)
+		if not isPressInput(input.UserInputType) then
+			return
+		end
+
+		if activePressInput and input ~= activePressInput and input.UserInputType ~= activePressInput.UserInputType then
+			return
+		end
+
+		isPressed = false
+		activePressInput = nil
+		updateButtonScale()
+	end)
+
+	UserInputService.InputEnded:Connect(function(input: InputObject)
+		if not activePressInput then
+			return
+		end
+
+		if input == activePressInput then
+			isPressed = false
+			activePressInput = nil
+			updateButtonScale()
+		end
+	end)
+
+	button.Activated:Connect(function()
+		isPressed = false
+		activePressInput = nil
+		updateButtonScale()
+	end)
+end
+
 rebirthMenu.Visible = false
+attachSnappyHoverPressEffect(rebirthMenuButton)
 
 local requiredDisplayedSpeed = MovementConfig.GetRequiredDisplayedSpeedForRebirthCount(0)
 
