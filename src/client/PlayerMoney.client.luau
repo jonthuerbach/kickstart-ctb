@@ -17,11 +17,8 @@ local function setMoneyText(value: number)
 	playerMoney.Text = NumberFormatter.FormatMoney(value)
 end
 
+setMoneyText(moneyValue.Value)
+
 updateMoneyRemote.OnClientEvent:Connect(function(money: number)
 	setMoneyText(money)
-end)
-
-setMoneyText(moneyValue.Value)
-moneyValue:GetPropertyChangedSignal("Value"):Connect(function()
-	setMoneyText(moneyValue.Value)
 end)

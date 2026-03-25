@@ -28,7 +28,6 @@ type PedestalState = {
 	pedestalModel: Model,
 	placePrompt: ProximityPrompt,
 	collectButton: BasePart,
-	moneyLabel: TextLabel,
 	upgradeSurfaceGui: SurfaceGui,
 	upgradeButton: GuiButton,
 	upgradeCostLabel: TextLabel,
@@ -161,7 +160,6 @@ end
 local function updateMoneyLabel(state: PedestalState)
 	local isUnlocked = isPedestalModelUnlocked(state.pedestalModel)
 	if not isUnlocked then
-		state.moneyLabel.Text = ""
 		state.collectButton:SetAttribute("IsPedestalCollectButton", true)
 		state.collectButton:SetAttribute("PedestalOccupied", false)
 		state.collectButton:SetAttribute("PedestalBankedMoney", 0)
@@ -173,12 +171,6 @@ local function updateMoneyLabel(state: PedestalState)
 	local bankedMoney = math.max(0, state.bankedMoney)
 	local suppressUnoccupiedMoneyDisplay = state.suppressUnoccupiedMoneyDisplay == true
 
-	-- For vacated/unowned plots, hide unoccupied values without mutating persisted banked money.
-	local shouldHideUnoccupiedValue = not isOccupied and (bankedMoney <= 0 or suppressUnoccupiedMoneyDisplay)
-	local displayText = if shouldHideUnoccupiedValue then "" else formatMoney(bankedMoney)
-	state.moneyLabel.Text = displayText
-
-	-- Mirror state for client-side display enforcement.
 	state.collectButton:SetAttribute("IsPedestalCollectButton", true)
 	state.collectButton:SetAttribute("PedestalOccupied", isOccupied)
 	state.collectButton:SetAttribute("PedestalBankedMoney", bankedMoney)
@@ -780,8 +772,6 @@ local function buildPedestalState(plot: any, pedestalId: string, pedestalModel: 
 	local brainrotAttachment = pedestalTop:WaitForChild("BrainrotAttachment")
 	local button = pedestalModel:WaitForChild("Button")
 	local collectButton = button:WaitForChild("CollectButton")
-	local surfaceGui = collectButton:WaitForChild("SurfaceGui")
-	local moneyLabel = surfaceGui:WaitForChild("MoneyLabel")
 	local upgradeButtonRoot = pedestalModel:WaitForChild("UpgradeButton")
 	local upgradeButtonBase = upgradeButtonRoot:WaitForChild("UpgradeButtonBase")
 	local upgradeSurfaceGui = upgradeButtonBase:WaitForChild("SurfaceGui")
@@ -798,10 +788,6 @@ local function buildPedestalState(plot: any, pedestalId: string, pedestalModel: 
 		`[PedestalInit] {pedestalModel.Name} PedestalTop.BrainrotAttachment is invalid`
 	)
 	assert(collectButton:IsA("BasePart"), `[PedestalInit] {pedestalModel.Name} Button.CollectButton must be a BasePart`)
-	assert(
-		moneyLabel:IsA("TextLabel"),
-		`[PedestalInit] {pedestalModel.Name} CollectButton.SurfaceGui.MoneyLabel must be a TextLabel`
-	)
 	assert(
 		upgradeSurfaceGui:IsA("SurfaceGui"),
 		`[PedestalInit] {pedestalModel.Name} UpgradeButtonBase.SurfaceGui must be a SurfaceGui`
@@ -822,7 +808,6 @@ local function buildPedestalState(plot: any, pedestalId: string, pedestalModel: 
 		pedestalModel = pedestalModel,
 		placePrompt = placePrompt,
 		collectButton = collectButton,
-		moneyLabel = moneyLabel,
 		upgradeSurfaceGui = upgradeSurfaceGui :: SurfaceGui,
 		upgradeButton = upgradeButton :: GuiButton,
 		upgradeCostLabel = upgradeCostLabel :: TextLabel,
