@@ -21,5 +21,6 @@ return {
 
 	GamePasses = {
 		["1764317066"] = { owned = false, awarded = false },
+		["1767395214"] = { owned = false, awarded = false },
 	},
 }

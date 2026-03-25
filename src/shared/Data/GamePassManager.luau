@@ -6,18 +6,25 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local DataManager = require(ReplicatedStorage.Shared.Data.DataManager)
 local GamePassCatalog = require(ReplicatedStorage.Shared.Catalogs.GamePassCatalog)
 
+local function syncOwnershipAttributes(player: Player, profile: { Data: { GamePasses: { [string]: { owned: boolean, awarded: boolean } } } })
+	for passId, attributeName in GamePassCatalog.Attributes do
+		local passData = profile.Data.GamePasses[passId]
+		local owned = passData and passData.owned == true
+		player:SetAttribute(attributeName, owned)
+	end
+end
+
 function GamePassManager.PromptPurchase(player: Player, name: string)
 	local profile = DataManager.Profiles[player]
 	if not profile then
 		return
 	end
 
-	local passId: string = GamePassCatalog.GetGamePassId(name)
+	local passId: string? = GamePassCatalog.GetGamePassId(name)
 	if not passId then
 		return
 	end
 
-	-- check if player owns pass from profile (gifted gamepasses)
 	local hasPass = profile.Data.GamePasses[passId].owned
 	if hasPass == false then
 		local success, message = pcall(function()
@@ -30,10 +37,8 @@ function GamePassManager.PromptPurchase(player: Player, name: string)
 		end
 
 		if hasPass == false then
-			-- prompt user for purchase HERE!
 			MarketplaceService:PromptGamePassPurchase(player, tonumber(passId))
 		elseif hasPass == true then
-			-- re-sync all gamepass data because something went out of sync
 			GamePassManager.UpdateOwnershipData(player)
 		end
 	end
@@ -49,13 +54,24 @@ function GamePassManager.OnPromptPurchaseFinished(player: Player, gamePassId: nu
 		return
 	end
 
-	local awardFunction = GamePassCatalog.Functions[gamePassId]
+	local passIdStr = tostring(gamePassId)
+	local passData = profile.Data.GamePasses[passIdStr]
+	if not passData then
+		warn("[GamePassManager] No profile data for game pass id: " .. passIdStr)
+		return
+	end
+
+	passData.owned = true
+
+	local awardFunction = GamePassCatalog.Functions[passIdStr]
 	if awardFunction then
 		awardFunction(player)
-		profile.Data.GamePasses[gamePassId].awarded = true
+		passData.awarded = true
 	else
-		warn("No award function found for game pass id: " .. gamePassId)
+		warn("[GamePassManager] No award function for game pass id: " .. passIdStr)
 	end
+
+	syncOwnershipAttributes(player, profile)
 end
 
 function GamePassManager.UpdateOwnershipData(player: Player)
@@ -65,8 +81,13 @@ function GamePassManager.UpdateOwnershipData(player: Player)
 	end
 
 	for passId: string, awardFunction in GamePassCatalog.Functions do
-		local hasPass = profile.Data.GamePasses[passId].owned
-		if hasPass == false then
+		local passData = profile.Data.GamePasses[passId]
+		if not passData then
+			continue
+		end
+
+		if passData.owned == false then
+			local hasPass = false
 			local success, message = pcall(function()
 				hasPass = MarketplaceService:UserOwnsGamePassAsync(player.UserId, tonumber(passId))
 			end)
@@ -77,13 +98,14 @@ function GamePassManager.UpdateOwnershipData(player: Player)
 			end
 
 			if hasPass then
-				profile.Data.GamePasses[passId].owned = true
-
+				passData.owned = true
 				awardFunction(player)
-				profile.Data.GamePasses[passId].awarded = true
+				passData.awarded = true
 			end
 		end
 	end
+
+	syncOwnershipAttributes(player, profile)
 end
 
 MarketplaceService.PromptGamePassPurchaseFinished:Connect(function(...)
