@@ -18,9 +18,9 @@ local styleProfiles = {
 		alwaysOnTop = true,
 	},
 	Pedestal = {
-		size = UDim2.new(8, 0, 4, 0),
+		size = UDim2.new(10, 0, 6, 0),
 		studsOffset = Vector3.new(0, 9, 0),
-		maxDistance = 90,
+		maxDistance = 50,
 		alwaysOnTop = false,
 	},
 }
@@ -70,8 +70,8 @@ local function buildLabel(container: Instance, name: string, text: string, color
 	local stroke = Instance.new("UIStroke")
 	stroke.Color = Color3.new(0, 0, 0)
 	stroke.LineJoinMode = Enum.LineJoinMode.Bevel
-	stroke.StrokeSizingMode = Enum.StrokeSizingMode.ScaledSize
-	stroke.Thickness = 0.12
+	stroke.StrokeSizingMode = Enum.StrokeSizingMode.FixedSize
+	stroke.Thickness = 3
 	stroke.Parent = label
 
 	return label
