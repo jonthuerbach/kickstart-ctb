@@ -3,6 +3,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local BrainrotCatalog = require(ReplicatedStorage.Shared.Catalogs.BrainrotCatalog)
 local BrainrotBillboard = require(ReplicatedStorage.Shared.Utils.BrainrotBillboard)
+local MythicSpawnTimer = require(ReplicatedStorage.Shared.Utils.MythicSpawnTimer)
 local BrainrotToolManager = require(ReplicatedStorage.Shared.Managers.BrainrotToolManager)
 local TutorialManager = require(ReplicatedStorage.Shared.Managers.TutorialManager)
 
@@ -14,7 +15,7 @@ local mythicSpawnedRemote = remotes:WaitForChild("MythicSpawned") :: RemoteEvent
 
 local BRAINROT_LIFETIME_SECONDS = 60
 local BRAINROT_RESPAWN_DELAY_SECONDS = 5
-local MYTHIC_SPAWN_INTERVAL_SECONDS = 5 * 60
+local MYTHIC_SPAWN_INTERVAL_SECONDS = MythicSpawnTimer.INTERVAL_SECONDS
 local MYTHIC_LIFETIME_SECONDS = 4 * 60
 local HELD_BRAINROT_MODEL_ATTRIBUTE = "HeldBrainrotModelName"
 local HELD_BRAINROT_RARITY_ATTRIBUTE = "HeldBrainrotRarity"
@@ -206,12 +207,7 @@ local function isMythicSpinnerTop(spinnerTop: Model): boolean
 end
 
 local function secondsUntilNextMythicWindow(nowEpochSeconds: number): number
-	local remainder = nowEpochSeconds % MYTHIC_SPAWN_INTERVAL_SECONDS
-	if remainder == 0 then
-		return MYTHIC_SPAWN_INTERVAL_SECONDS
-	end
-
-	return MYTHIC_SPAWN_INTERVAL_SECONDS - remainder
+	return MythicSpawnTimer.GetSecondsUntilNextWindow(nowEpochSeconds)
 end
 
 local function selectWeightedBrainrot(spawnType: string): any?

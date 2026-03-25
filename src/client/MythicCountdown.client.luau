@@ -1,7 +1,8 @@
 local Players = game:GetService("Players")
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local Workspace = game:GetService("Workspace")
 
-local MYTHIC_SPAWN_INTERVAL_SECONDS = 5 * 60
+local MythicSpawnTimer = require(ReplicatedStorage.Shared.Utils.MythicSpawnTimer)
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -41,26 +42,21 @@ stroke.Thickness = 0.1
 stroke.LineJoinMode = Enum.LineJoinMode.Round
 stroke.Parent = label
 
-local function getSecondsUntilNextMythicWindow(serverNowSeconds: number): number
-	local remainder = serverNowSeconds % MYTHIC_SPAWN_INTERVAL_SECONDS
-	if remainder == 0 then
-		return 0
-	end
-
-	return MYTHIC_SPAWN_INTERVAL_SECONDS - remainder
-end
-
-local function formatAsMmSs(totalSeconds: number): string
-	local minutes = math.floor(totalSeconds / 60)
-	local seconds = totalSeconds % 60
-	return string.format("%02d:%02d", minutes, seconds)
-end
+local world = Workspace:WaitForChild("World")
+local brainrotBillboard = world:WaitForChild("BrainrotBillboard")
+local billboardPart = brainrotBillboard:WaitForChild("Billboard")
+local display = billboardPart:WaitForChild("Display")
+local screen = display:WaitForChild("Screen")
+local billboardScreenGui = screen:WaitForChild("ScreenGui")
+local billboardFrame = billboardScreenGui:WaitForChild("Frame")
+local billboardTimeLabel = billboardFrame:WaitForChild("TimeLabel")
+assert(billboardTimeLabel:IsA("TextLabel"), "[MythicCountdown] TimeLabel must be a TextLabel")
 
 task.spawn(function()
 	while true do
-		local serverNow = math.floor(Workspace:GetServerTimeNow())
-		local remaining = getSecondsUntilNextMythicWindow(serverNow)
-		label.Text = `Mythic Spawns In: {formatAsMmSs(remaining)}`
+		local formattedCountdown = MythicSpawnTimer.GetFormattedCountdown(Workspace:GetServerTimeNow())
+		label.Text = `Mythic Spawns In: {formattedCountdown}`
+		billboardTimeLabel.Text = formattedCountdown
 		task.wait(1)
 	end
 end)
