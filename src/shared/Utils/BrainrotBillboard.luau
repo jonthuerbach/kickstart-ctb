@@ -14,13 +14,13 @@ local styleProfiles = {
 	Spinner = {
 		size = UDim2.new(16, 0, 10, 0),
 		studsOffset = Vector3.new(0, 9, 0),
-		maxDistance = 90,
+		maxDistance = 96,
 		alwaysOnTop = true,
 	},
 	Pedestal = {
 		size = UDim2.new(10, 0, 6, 0),
 		studsOffset = Vector3.new(0, 9, 0),
-		maxDistance = 50,
+		maxDistance = 64,
 		alwaysOnTop = false,
 	},
 }
