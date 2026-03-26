@@ -913,6 +913,16 @@ buildMetadataLookup()
 initializePedestals()
 
 MarketplaceService.ProcessReceipt = function(receiptInfo)
+	local cashAmount = DeveloperProductCatalog.CashProducts[receiptInfo.ProductId]
+	if cashAmount then
+		local player = Players:GetPlayerByUserId(receiptInfo.PlayerId)
+		if not player or not DataManager.Profiles[player] then
+			return Enum.ProductPurchaseDecision.NotProcessedYet
+		end
+		DataManager.UpdateMoney(player, cashAmount)
+		return Enum.ProductPurchaseDecision.PurchaseGranted
+	end
+
 	if receiptInfo.ProductId == SKIP_LEVEL_PRODUCT_ID then
 		return processSkipLevelReceipt(receiptInfo)
 	end
