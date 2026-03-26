@@ -960,7 +960,9 @@ task.spawn(function()
 		task.wait(1)
 		for _, state in allPedestalStates do
 			if state.placedRarity ~= nil and state.placedModelName ~= nil and state.ratePerSecond > 0 then
-				state.bankedMoney += state.ratePerSecond
+				local ownerPlayer = getOwnerPlayer(state)
+				local multiplier = if ownerPlayer and ownerPlayer:GetAttribute("GamePass2XMoney") == true then 2 else 1
+				state.bankedMoney += state.ratePerSecond * multiplier
 				updateMoneyLabel(state)
 				savePedestalDataForOwner(state)
 			end
