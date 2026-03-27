@@ -10,6 +10,7 @@ local DeveloperProductCatalog = require(ReplicatedStorage.Shared.Catalogs.Develo
 local BrainrotBillboard = require(ReplicatedStorage.Shared.Utils.BrainrotBillboard)
 local NumberFormatter = require(ReplicatedStorage.Shared.Utils.NumberFormatter)
 local TutorialManager = require(ReplicatedStorage.Shared.Managers.TutorialManager)
+local ReceiptProcessor = require(script.Parent.ReceiptProcessor)
 local remotes = ReplicatedStorage:WaitForChild("Remotes")
 local requestPedestalUpgradeRemote = remotes:WaitForChild("RequestPedestalUpgrade") :: RemoteEvent
 local pedestalCollectSfxRemote = remotes:WaitForChild("PedestalCollectSfx") :: RemoteEvent
@@ -912,23 +913,18 @@ end
 buildMetadataLookup()
 initializePedestals()
 
-MarketplaceService.ProcessReceipt = function(receiptInfo)
-	local cashAmount = DeveloperProductCatalog.CashProducts[receiptInfo.ProductId]
-	if cashAmount then
+for productId, cashAmount in DeveloperProductCatalog.CashProducts do
+	ReceiptProcessor.RegisterHandler(productId, function(receiptInfo)
 		local player = Players:GetPlayerByUserId(receiptInfo.PlayerId)
 		if not player or not DataManager.Profiles[player] then
 			return Enum.ProductPurchaseDecision.NotProcessedYet
 		end
 		DataManager.UpdateMoney(player, cashAmount)
 		return Enum.ProductPurchaseDecision.PurchaseGranted
-	end
-
-	if receiptInfo.ProductId == SKIP_LEVEL_PRODUCT_ID then
-		return processSkipLevelReceipt(receiptInfo)
-	end
-
-	return Enum.ProductPurchaseDecision.PurchaseGranted
+	end)
 end
+
+ReceiptProcessor.RegisterHandler(SKIP_LEVEL_PRODUCT_ID, processSkipLevelReceipt)
 
 requestPedestalUpgradeRemote.OnServerEvent:Connect(onUpgradeButtonRequested)
 
