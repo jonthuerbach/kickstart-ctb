@@ -290,6 +290,15 @@ BrainrotCatalog.Names = {
 			chance = 0.5,
 		},
 	},
+	Godly = {
+		{
+			name = "Pakrahmatmamat",
+			modelName = "Pakrahmatmamat",
+			rarity = "Godly",
+			ratePerSecond = 10000000,
+			chance = 100, -- change to 42 later
+		},
+	},
 }
 
 return BrainrotCatalog

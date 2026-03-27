@@ -2,6 +2,7 @@ local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local MovementConfig = require(ReplicatedStorage.Shared.Configs.MovementConfig)
+local MenuManager = require(ReplicatedStorage.Shared.Utils.MenuManager)
 
 local player = Players.LocalPlayer
 local playerGui = player:WaitForChild("PlayerGui")
@@ -73,6 +74,9 @@ local function bindCharacter(character: Model)
 		end
 	end)
 end
+
+assert(runButton:IsA("GuiButton"), "[RunToggle] RunButton must be a GuiButton")
+MenuManager.AttachHoverPressEffect(runButton)
 
 runButton.Activated:Connect(function()
 	isWalking = not isWalking
