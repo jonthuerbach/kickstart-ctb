@@ -1,5 +1,8 @@
+local ReplicatedStorage = game:GetService("ReplicatedStorage")
+
 local DEFAULT_RARITY_COLOR = Color3.fromRGB(255, 255, 255)
 local NumberFormatter = require(script.Parent.NumberFormatter)
+local EasyVisuals = require(ReplicatedStorage:FindFirstChild("Library"):FindFirstChild("EasyVisuals"))
 
 local rarityColors: { [string]: Color3 } = {
 	Common = Color3.fromRGB(220, 220, 220),
@@ -161,6 +164,12 @@ function BrainrotBillboard.CreateFromAttributes(model: Model, options: CreateOpt
 
 	if typeof(mutationAttr) == "string" and mutationAttr ~= "" then
 		buildLabel(container, "Mutation", `Mutation: {mutationAttr}`, Color3.fromRGB(255, 240, 130), 0.25)
+	end
+
+	if rarityText == "Godly" then
+		local rarityBillboardText = container:WaitForChild("Rarity")
+		rarityBillboardText.TextColor3 = Color3.fromRGB(255, 255, 255)
+		EasyVisuals.new(rarityBillboardText, "RainbowStroke", 0.3, 3)
 	end
 
 	if countdownLabel and typeof(lifetimeSeconds) == "number" then

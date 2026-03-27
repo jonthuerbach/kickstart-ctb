@@ -5,6 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local BrainrotToolManager = require(ReplicatedStorage.Shared.Managers.BrainrotToolManager)
 local DataManager = require(ReplicatedStorage.Shared.Data.DataManager)
 local ReceiptProcessor = require(script.Parent.ReceiptProcessor)
+local EasyVisuals = require(ReplicatedStorage:FindFirstChild("Library"):FindFirstChild("EasyVisuals"))
 
 local RARITY = "Godly"
 local BUY_BRAINROTS_FOLDER = workspace:WaitForChild("World"):WaitForChild("BuyBrainrots")
@@ -19,6 +20,10 @@ local function setupBuyableBrainrot(brainrotFolder: Instance)
 	end
 
 	assert(brainrotModel, `[BuyBrainrotInit] No model with DevProductId found in {brainrotFolder:GetFullName()}`)
+
+	local rarityText = brainrotModel:WaitForChild("BrainrotBillboardGui"):WaitForChild("BrainrotRarity")
+	assert(rarityText, `[BuyBrainrotInit] Missing BrainrotRarity TextLabel in {brainrotModel:GetFullName()}`)
+	EasyVisuals.new(rarityText, "RainbowStroke", 0.3, 0.1)
 
 	local devProductId = brainrotModel:GetAttribute("DevProductId")
 	local brainrotName = brainrotModel:GetAttribute("Name")
