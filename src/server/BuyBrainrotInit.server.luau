@@ -5,7 +5,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 local BrainrotToolManager = require(ReplicatedStorage.Shared.Managers.BrainrotToolManager)
 local DataManager = require(ReplicatedStorage.Shared.Data.DataManager)
 local ReceiptProcessor = require(script.Parent.ReceiptProcessor)
-local EasyVisuals = require(ReplicatedStorage:FindFirstChild("Library"):FindFirstChild("EasyVisuals"))
+local EasyVisuals = require(ReplicatedStorage.Shared.Libraries.EasyVisuals)
 
 local RARITY = "Godly"
 local BUY_BRAINROTS_FOLDER = workspace:WaitForChild("World"):WaitForChild("BuyBrainrots")

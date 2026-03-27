@@ -2,7 +2,7 @@ local ReplicatedStorage = game:GetService("ReplicatedStorage")
 
 local DEFAULT_RARITY_COLOR = Color3.fromRGB(255, 255, 255)
 local NumberFormatter = require(script.Parent.NumberFormatter)
-local EasyVisuals = require(ReplicatedStorage:FindFirstChild("Library"):FindFirstChild("EasyVisuals"))
+local EasyVisuals = require(ReplicatedStorage.Shared.Libraries.EasyVisuals)
 
 local rarityColors: { [string]: Color3 } = {
 	Common = Color3.fromRGB(220, 220, 220),
