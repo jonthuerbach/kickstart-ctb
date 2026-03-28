@@ -37,7 +37,7 @@ local SILHOUETTE_AMBIENT = Color3.new(0, 0, 0)
 local SILHOUETTE_LIGHT_COLOR = Color3.new(0, 0, 0)
 local DISCOVERED_GRADIENT_COLOR = ColorSequence.new(Color3.fromRGB(200, 225, 255), Color3.fromRGB(140, 185, 235))
 local DISCOVERED_GRADIENT_ROTATION = 90
-local UNDISCOVERED_GRADIENT_COLOR = ColorSequence.new(Color3.fromRGB(60, 60, 60), Color3.fromRGB(40, 40, 40))
+local UNDISCOVERED_GRADIENT_COLOR = ColorSequence.new(Color3.fromRGB(128, 128, 128), Color3.fromRGB(169, 169, 169))
 local UNDISCOVERED_GRADIENT_ROTATION = 90
 
 type SideButtonEntry = {
@@ -124,11 +124,35 @@ local function loadBrainrotIntoViewport(
 	end
 end
 
+local function getDiscoveredCount(rarity: string, catalogEntries: { any }): (number, number)
+	local total = #catalogEntries
+	local discovered = 0
+
+	if indexData then
+		local rarityIndex = indexData[rarity]
+		if typeof(rarityIndex) == "table" then
+			for _, entry in catalogEntries do
+				local entryData = rarityIndex[entry.modelName]
+				if typeof(entryData) == "table" and entryData.discovered == true then
+					discovered += 1
+				end
+			end
+		end
+	end
+
+	return discovered, total
+end
+
 local function loadRarityCategory(rarity: string)
 	currentRarity = rarity
-	titleLabel.Text = rarity .. " Brainrots"
 
 	local catalogEntries = BrainrotCatalog.Names[rarity]
+	if catalogEntries then
+		local discovered, total = getDiscoveredCount(rarity, catalogEntries)
+		titleLabel.Text = `{rarity} Brainrots ({discovered}/{total})`
+	else
+		titleLabel.Text = rarity .. " Brainrots"
+	end
 	if not catalogEntries then
 		for i = 1, FRAME_COUNT do
 			brainrotFrames[i].Visible = false
