@@ -1,5 +1,6 @@
 local Players = game:GetService("Players")
 local ReplicatedStorage = game:GetService("ReplicatedStorage")
+local TweenService = game:GetService("TweenService")
 
 local MenuManager = require(ReplicatedStorage.Shared.Utils.MenuManager)
 local MovementConfig = require(ReplicatedStorage.Shared.Configs.MovementConfig)
@@ -16,6 +17,7 @@ local rebirthMenu = mainGui:WaitForChild("RebirthMenu")
 local playerButtons = mainGui:WaitForChild("PlayerButtons")
 local rebirthFrame = playerButtons:WaitForChild("RebirthFrame")
 local rebirthMenuButton = rebirthFrame:WaitForChild("RebirthMenuButton")
+local indicator = rebirthFrame:WaitForChild("Indicator") :: TextLabel
 local rebirthMenuCloseButton = rebirthMenu:WaitForChild("Header"):WaitForChild("CloseButton")
 local requiresFrame = rebirthMenu:WaitForChild("Body"):WaitForChild("Requires")
 local rebirthButton = requiresFrame:WaitForChild("RebirthButton")
@@ -37,6 +39,10 @@ assert(
 )
 
 local MENU_NAME = "RebirthMenu"
+local WIGGLE_INTERVAL = 5
+local WIGGLE_AMPLITUDES = { 10, -7, 4, -2 }
+local WIGGLE_STEP_DURATION = 0.08
+local WIGGLE_RETURN_DURATION = 0.1
 
 MenuManager.Register(MENU_NAME, rebirthMenu, {
 	onOpen = function()
@@ -55,6 +61,10 @@ local function getDisplayedSpeed(): number
 	return math.max(0, math.floor(speedDisplay))
 end
 
+local function updateIndicator(canRebirth: boolean)
+	indicator.Visible = canRebirth
+end
+
 local function updateProgressUi(displayedSpeed: number, requiredSpeed: number)
 	local clampedRequired = math.max(1, math.floor(requiredSpeed))
 	local ratio = math.clamp(displayedSpeed / clampedRequired, 0, 1)
@@ -64,6 +74,7 @@ local function updateProgressUi(displayedSpeed: number, requiredSpeed: number)
 	local canRebirth = displayedSpeed >= clampedRequired
 	rebirthButton.Active = canRebirth
 	rebirthButton.AutoButtonColor = canRebirth
+	updateIndicator(canRebirth)
 end
 
 local function refreshProgressFromSpeedAttribute()
@@ -80,6 +91,31 @@ local function applyRebirthState(state: { [string]: any })
 	requiredDisplayedSpeed = math.max(1, math.floor(serverRequiredDisplayedSpeed))
 	updateProgressUi(math.max(0, math.floor(serverDisplayedSpeed)), requiredDisplayedSpeed)
 end
+
+local function playWiggle()
+	local tweenInfo = TweenInfo.new(WIGGLE_STEP_DURATION, Enum.EasingStyle.Quad, Enum.EasingDirection.Out)
+	for _, angle in WIGGLE_AMPLITUDES do
+		local tween = TweenService:Create(indicator, tweenInfo, { Rotation = angle })
+		tween:Play()
+		tween.Completed:Wait()
+	end
+	local returnTween = TweenService:Create(
+		indicator,
+		TweenInfo.new(WIGGLE_RETURN_DURATION, Enum.EasingStyle.Quad, Enum.EasingDirection.Out),
+		{ Rotation = 0 }
+	)
+	returnTween:Play()
+	returnTween.Completed:Wait()
+end
+
+task.spawn(function()
+	while true do
+		if indicator.Visible then
+			playWiggle()
+		end
+		task.wait(WIGGLE_INTERVAL)
+	end
+end)
 
 rebirthMenuButton.Activated:Connect(function()
 	MenuManager.Toggle(MENU_NAME)
@@ -104,4 +140,5 @@ player:GetAttributeChangedSignal("SpeedDisplay"):Connect(function()
 	refreshProgressFromSpeedAttribute()
 end)
 
+requestRebirthStateRemote:FireServer()
 refreshProgressFromSpeedAttribute()
