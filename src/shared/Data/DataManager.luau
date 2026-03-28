@@ -96,6 +96,16 @@ local function ensureTutorialRoot(profileData: { [string]: any }): { [string]: a
 	return tutorial :: { [string]: any }
 end
 
+local function ensureBrainrotIndexRoot(profileData: { [string]: any }): { [string]: { [string]: { discovered: boolean } } }
+	local brainrotIndex = profileData.BrainrotIndex
+	if typeof(brainrotIndex) ~= "table" then
+		brainrotIndex = {}
+		profileData.BrainrotIndex = brainrotIndex
+	end
+
+	return brainrotIndex :: { [string]: { [string]: { discovered: boolean } } }
+end
+
 local function ensureDeveloperProductsRoot(profileData: { [string]: any }): { [string]: any }
 	local developerProducts = profileData.DeveloperProducts
 	if typeof(developerProducts) ~= "table" then
@@ -471,6 +481,56 @@ function DataManager.SetTutorialCompleted(player: Player, completed: boolean)
 
 	local tutorial = ensureTutorialRoot(profile.Data)
 	tutorial.Completed = completed == true
+end
+
+function DataManager.GetBrainrotIndexData(player: Player): { [string]: { [string]: { discovered: boolean } } }?
+	local profile = DataManager.Profiles[player]
+	if not profile then
+		return nil
+	end
+
+	return ensureBrainrotIndexRoot(profile.Data)
+end
+
+function DataManager.DiscoverBrainrot(player: Player, rarity: string, modelName: string)
+	local profile = DataManager.Profiles[player]
+	if not profile then
+		return
+	end
+
+	local brainrotIndex = ensureBrainrotIndexRoot(profile.Data)
+	local rarityIndex = brainrotIndex[rarity]
+	if typeof(rarityIndex) ~= "table" then
+		rarityIndex = {}
+		brainrotIndex[rarity] = rarityIndex
+	end
+
+	local entry = rarityIndex[modelName]
+	if typeof(entry) ~= "table" then
+		rarityIndex[modelName] = { discovered = true }
+	else
+		entry.discovered = true
+	end
+end
+
+function DataManager.IsBrainrotDiscovered(player: Player, rarity: string, modelName: string): boolean
+	local profile = DataManager.Profiles[player]
+	if not profile then
+		return false
+	end
+
+	local brainrotIndex = ensureBrainrotIndexRoot(profile.Data)
+	local rarityIndex = brainrotIndex[rarity]
+	if typeof(rarityIndex) ~= "table" then
+		return false
+	end
+
+	local entry = rarityIndex[modelName]
+	if typeof(entry) ~= "table" then
+		return false
+	end
+
+	return entry.discovered == true
 end
 
 function DataManager.GetPlotLevel(player: Player): number

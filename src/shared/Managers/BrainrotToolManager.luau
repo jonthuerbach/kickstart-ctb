@@ -135,6 +135,8 @@ function BrainrotToolManager.AddOwnedTool(
 		return updatedCount
 	end
 
+	DataManager.DiscoverBrainrot(player, rarity, modelName)
+
 	BrainrotToolManager.GrantToolInstance(player, rarity, modelName, autoEquip, level)
 	return updatedCount
 end

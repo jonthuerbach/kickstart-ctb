@@ -160,3 +160,17 @@ if not plotUpgrade then
 	plotUpgrade.Name = "PlotUpgrade"
 	plotUpgrade.Parent = remotes
 end
+
+local requestIndexState = remotes:FindFirstChild("RequestIndexState")
+if not requestIndexState then
+	requestIndexState = Instance.new("RemoteEvent")
+	requestIndexState.Name = "RequestIndexState"
+	requestIndexState.Parent = remotes
+end
+
+local indexState = remotes:FindFirstChild("IndexState")
+if not indexState then
+	indexState = Instance.new("RemoteEvent")
+	indexState.Name = "IndexState"
+	indexState.Parent = remotes
+end
