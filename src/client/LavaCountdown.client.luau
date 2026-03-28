@@ -17,7 +17,7 @@ local label = Instance.new("TextLabel")
 label.Name = "CountdownLabel"
 label.AnchorPoint = Vector2.new(0.5, 0)
 label.Position = UDim2.new(0.5, 0, 0, 12)
-label.Size = UDim2.fromScale(0.5, 0.1)
+label.Size = UDim2.fromScale(0.5, 0.06)
 label.BackgroundTransparency = 1
 label.Text = ""
 label.TextColor3 = Color3.fromRGB(255, 255, 255)
@@ -30,7 +30,7 @@ local stroke = Instance.new("UIStroke")
 stroke.Color = Color3.fromRGB(0, 0, 0)
 stroke.StrokeSizingMode = Enum.StrokeSizingMode.ScaledSize
 stroke.Thickness = 0.1
-stroke.LineJoinMode = Enum.LineJoinMode.Round
+stroke.LineJoinMode = Enum.LineJoinMode.Bevel
 stroke.Parent = label
 
 lavaCountdownRemote.OnClientEvent:Connect(function(count: number)
