@@ -174,3 +174,24 @@ if not indexState then
 	indexState.Name = "IndexState"
 	indexState.Parent = remotes
 end
+
+local requestRewardsState = remotes:FindFirstChild("RequestRewardsState")
+if not requestRewardsState then
+	requestRewardsState = Instance.new("RemoteEvent")
+	requestRewardsState.Name = "RequestRewardsState"
+	requestRewardsState.Parent = remotes
+end
+
+local rewardsState = remotes:FindFirstChild("RewardsState")
+if not rewardsState then
+	rewardsState = Instance.new("RemoteEvent")
+	rewardsState.Name = "RewardsState"
+	rewardsState.Parent = remotes
+end
+
+local requestCollectReward = remotes:FindFirstChild("RequestCollectReward")
+if not requestCollectReward then
+	requestCollectReward = Instance.new("RemoteEvent")
+	requestCollectReward.Name = "RequestCollectReward"
+	requestCollectReward.Parent = remotes
+end

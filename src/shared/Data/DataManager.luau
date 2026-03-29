@@ -96,6 +96,36 @@ local function ensureTutorialRoot(profileData: { [string]: any }): { [string]: a
 	return tutorial :: { [string]: any }
 end
 
+local REWARD_SLOT_COUNT = 9
+
+local function ensureRewardsRoot(profileData: { [string]: any }): { [string]: any }
+	local rewards = profileData.Rewards
+	if typeof(rewards) ~= "table" then
+		rewards = {}
+		profileData.Rewards = rewards
+	end
+
+	if typeof(rewards.CycleStart) ~= "number" then
+		rewards.CycleStart = 0
+	end
+	if typeof(rewards.ElapsedSeconds) ~= "number" then
+		rewards.ElapsedSeconds = 0
+	end
+
+	local collected = rewards.Collected
+	if typeof(collected) ~= "table" then
+		collected = {}
+		rewards.Collected = collected
+	end
+	for i = 1, REWARD_SLOT_COUNT do
+		if typeof(collected[i]) ~= "boolean" then
+			collected[i] = false
+		end
+	end
+
+	return rewards
+end
+
 local function ensureBrainrotIndexRoot(profileData: { [string]: any }): { [string]: { [string]: { discovered: boolean } } }
 	local brainrotIndex = profileData.BrainrotIndex
 	if typeof(brainrotIndex) ~= "table" then
@@ -556,4 +586,64 @@ function DataManager.SetPlotLevel(player: Player, plotLevel: number)
 
 	profile.Data.PlotLevel = math.max(0, math.floor(plotLevel))
 end
+
+function DataManager.GetRewardsData(player: Player): { [string]: any }?
+	local profile = DataManager.Profiles[player]
+	if not profile then
+		return nil
+	end
+
+	return ensureRewardsRoot(profile.Data)
+end
+
+function DataManager.ResetRewardsCycle(player: Player, cycleStart: number)
+	local profile = DataManager.Profiles[player]
+	if not profile then
+		return
+	end
+
+	local rewards = ensureRewardsRoot(profile.Data)
+	rewards.CycleStart = cycleStart
+	rewards.ElapsedSeconds = 0
+	for i = 1, REWARD_SLOT_COUNT do
+		rewards.Collected[i] = false
+	end
+end
+
+function DataManager.SetRewardsElapsed(player: Player, elapsedSeconds: number)
+	local profile = DataManager.Profiles[player]
+	if not profile then
+		return
+	end
+
+	local rewards = ensureRewardsRoot(profile.Data)
+	rewards.ElapsedSeconds = math.max(0, elapsedSeconds)
+end
+
+function DataManager.IsRewardCollected(player: Player, slotIndex: number): boolean
+	local rewards = DataManager.GetRewardsData(player)
+	if not rewards then
+		return false
+	end
+
+	local collected = rewards.Collected
+	if typeof(collected) ~= "table" then
+		return false
+	end
+
+	return collected[slotIndex] == true
+end
+
+function DataManager.SetRewardCollected(player: Player, slotIndex: number)
+	local profile = DataManager.Profiles[player]
+	if not profile then
+		return
+	end
+
+	local rewards = ensureRewardsRoot(profile.Data)
+	if slotIndex >= 1 and slotIndex <= REWARD_SLOT_COUNT then
+		rewards.Collected[slotIndex] = true
+	end
+end
+
 return DataManager

@@ -24,6 +24,12 @@ return {
 		["1767395214"] = { owned = false, awarded = false },
 	},
 
+	Rewards = {
+		CycleStart = 0,
+		ElapsedSeconds = 0,
+		Collected = { false, false, false, false, false, false, false, false, false },
+	},
+
 	BrainrotIndex = {
 		Common = {
 			["Matteo"] = { discovered = false },
