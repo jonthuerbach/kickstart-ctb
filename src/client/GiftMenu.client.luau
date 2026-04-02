@@ -12,10 +12,12 @@ local mainGui = playerGui:WaitForChild("MainGui")
 
 local giftMenu = mainGui:WaitForChild("GiftMenu")
 local section = giftMenu:WaitForChild("Body"):WaitForChild("Section")
+local upgradeLabel = section:WaitForChild("UpgradeLabel")
 local acceptButton = section:WaitForChild("AcceptButton")
 local cancelButton = section:WaitForChild("CancelButton")
 
 assert(giftMenu:IsA("GuiObject"), "[GiftMenu] MainGui.GiftMenu must be a GuiObject")
+assert(upgradeLabel:IsA("TextLabel"), "[GiftMenu] GiftMenu.Body.Section.UpgradeLabel must be a TextLabel")
 assert(acceptButton:IsA("GuiButton"), "[GiftMenu] GiftMenu.Body.Section.AcceptButton must be a GuiButton")
 assert(cancelButton:IsA("GuiButton"), "[GiftMenu] GiftMenu.Body.Section.CancelButton must be a GuiButton")
 
@@ -30,7 +32,6 @@ assert(safeZonePart:IsA("BasePart"), "[GiftMenu] workspace.World.SafeZone must b
 
 local trackedGiftPrompts: { [ProximityPrompt]: boolean } = {}
 local currentRequestId: string? = nil
-local statusTextLabel: TextLabel? = nil
 local hasEquippedBrainrot = false
 local isInSafeZone = false
 local nextSafeZoneCheckAt = 0
@@ -48,39 +49,8 @@ local function showStatusMessage(message: string)
 	warn(`[GiftMenu] {message}`)
 end
 
-local function findStatusTextLabel(): TextLabel?
-	local preferredNames = {
-		"PromptText",
-		"BodyText",
-		"MessageText",
-		"Message",
-		"Description",
-		"TextLabel",
-		"Label",
-	}
-
-	for _, name in ipairs(preferredNames) do
-		local candidate = section:FindFirstChild(name, true)
-		if candidate and candidate:IsA("TextLabel") then
-			return candidate
-		end
-	end
-
-	for _, descendant in section:GetDescendants() do
-		if descendant:IsA("TextLabel") then
-			return descendant
-		end
-	end
-
-	return nil
-end
-
 local function setMenuPromptText(senderDisplayName: string, brainrotName: string)
-	if not statusTextLabel then
-		return
-	end
-
-	statusTextLabel.Text = `{senderDisplayName} wants to gift you a {brainrotName}! Do you want to accept it?`
+	upgradeLabel.Text = `{senderDisplayName} wants to give you a {brainrotName} as a gift! Do you accept?`
 end
 
 local function setGiftMenuVisible(visible: boolean)
@@ -185,7 +155,6 @@ local function trackPrompt(prompt: ProximityPrompt)
 end
 
 giftMenu.Visible = false
-statusTextLabel = findStatusTextLabel()
 
 for _, descendant in Workspace:GetDescendants() do
 	if descendant:IsA("ProximityPrompt") then
